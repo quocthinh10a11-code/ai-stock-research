@@ -24,11 +24,11 @@ The product combines Vietnam-specific market evidence with AI-assisted synthesis
 
 ## Operating Context
 
-Users search stock symbols, scan market breadth and rankings, inspect AI insights and sentiment, and compare model portfolio allocations in a dense desktop research workflow. Public discovery begins on a landing page; authenticated research uses a persistent navigation shell.
+Users authenticate before entering the product, then search stock symbols from a focused home page, scan market breadth and rankings, inspect AI insights and sentiment, and compare model portfolio allocations in a dense research workflow.
 
 ## Capabilities and Constraints
 
-- Public landing and login routes plus authenticated overview, discover, technical, sentiment, and portfolio routes.
+- Public login route plus authenticated home, analysis, discover, technical, sentiment, and portfolio routes.
 - Supabase email/password and Google OAuth authentication with cookie-based SSR sessions.
 - Mock typed data and replaceable async data functions until the production PostgreSQL schema is supplied.
 - The supplied Stitch screens are the visual and content authority.
