@@ -20,6 +20,8 @@ python scripts/sync_market_data.py
 
 Apply every SQL migration before the first run. Optional variables are `MARKET_SYMBOLS`, `MARKET_LOOKBACK_DAYS`, `VNSTOCK_REQUEST_DELAY_SECONDS`, and `VNSTOCK_PRICE_MULTIPLIER`.
 
+Supabase writes retry transient TLS, connection, rate-limit, and 5xx failures up to four times with exponential backoff. Override this with `SUPABASE_HTTP_MAX_ATTEMPTS` and `SUPABASE_HTTP_RETRY_DELAY_SECONDS` when needed.
+
 ## Indicator and source limitations
 
 The community package is an extraction tool over public broker endpoints, not an exchange data feed. Guest mode is limited to 20 requests per minute; the job therefore fetches symbols sequentially. Vnstock's package license is personal, research, and non-commercial, so obtain appropriate data rights before commercial production use.

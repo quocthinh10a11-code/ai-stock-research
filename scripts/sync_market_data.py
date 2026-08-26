@@ -14,7 +14,7 @@ import sys
 import time
 from datetime import date, timedelta
 from typing import Any
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -63,24 +63,37 @@ class SupabaseRest:
         if not rows:
             return
         query = urlencode({"on_conflict": conflict})
-        request = Request(
-            f"{self.url}/rest/v1/{table}?{query}",
-            data=json.dumps(rows, allow_nan=False).encode("utf-8"),
-            method="POST",
-            headers={
-                "apikey": self.key,
-                "Authorization": f"Bearer {self.key}",
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates,return=minimal",
-            },
-        )
-        try:
-            with urlopen(request, timeout=60) as response:
-                if response.status not in (200, 201, 204):
-                    raise RuntimeError(f"Supabase returned HTTP {response.status} for {table}")
-        except HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Supabase upsert failed for {table}: HTTP {error.code} {detail}") from error
+        payload = json.dumps(rows, allow_nan=False).encode("utf-8")
+        max_attempts = int(os.getenv("SUPABASE_HTTP_MAX_ATTEMPTS", "4"))
+        retry_delay = float(os.getenv("SUPABASE_HTTP_RETRY_DELAY_SECONDS", "1.5"))
+        for attempt in range(1, max_attempts + 1):
+            request = Request(
+                f"{self.url}/rest/v1/{table}?{query}",
+                data=payload,
+                method="POST",
+                headers={
+                    "apikey": self.key,
+                    "Authorization": f"Bearer {self.key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
+            )
+            try:
+                with urlopen(request, timeout=60) as response:
+                    if response.status not in (200, 201, 204):
+                        raise RuntimeError(f"Supabase returned HTTP {response.status} for {table}")
+                return
+            except HTTPError as error:
+                detail = error.read().decode("utf-8", errors="replace")
+                if error.code not in (408, 429, 500, 502, 503, 504) or attempt == max_attempts:
+                    raise RuntimeError(f"Supabase upsert failed for {table}: HTTP {error.code} {detail}") from error
+                last_error: Exception = error
+            except (URLError, TimeoutError, ConnectionError) as error:
+                if attempt == max_attempts:
+                    raise RuntimeError(f"Supabase upsert failed for {table} after {max_attempts} attempts: {error}") from error
+                last_error = error
+            print(f"Retrying Supabase {table} upsert after attempt {attempt}: {last_error}", file=sys.stderr, flush=True)
+            time.sleep(retry_delay * (2 ** (attempt - 1)))
 
 
 def calculate_indicators(frame: pd.DataFrame) -> pd.DataFrame:
