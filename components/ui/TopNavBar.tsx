@@ -1,0 +1,9 @@
+"use client";
+import Link from "next/link";
+import { Bell, Search, UserRound } from "lucide-react";
+import { Logo } from "./Logo";
+
+export function TopNavBar({ variant = "app" }: { variant?: "public" | "app" }) {
+  if (variant === "public") return <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-navy/95 text-white backdrop-blur"><div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5"><Logo inverse /><nav className="hidden items-center gap-8 font-display text-sm text-slate-300 md:flex"><a href="#market">Market</a><a href="#features">Research</a><a href="#about">About</a></nav><div className="flex items-center gap-3"><Link href="/login" className="text-sm font-semibold">Log in</Link><Link href="/login" className="rounded bg-white px-4 py-2 text-sm font-semibold text-navy">Start researching</Link></div></div></header>;
+  return <header className="fixed inset-x-0 top-0 z-40 h-16 border-b border-slate-200 bg-white"><div className="flex h-full items-center"><div className="w-60 shrink-0 border-r border-slate-200 px-5"><Logo /></div><div className="flex flex-1 items-center justify-between gap-4 px-5"><label className="relative hidden w-full max-w-xl md:block"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input className="h-10 w-full rounded border border-slate-200 bg-slate-50 pl-9 pr-16 text-sm outline-none focus:border-slate-500" placeholder="Search ticker or company"/><kbd className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-slate-400">Ctrl K</kbd></label><div className="ml-auto flex items-center gap-2"><button aria-label="Notifications" className="grid size-9 place-items-center rounded border border-slate-200 text-slate-500 hover:bg-slate-50"><Bell size={17}/></button><button aria-label="Account" className="grid size-9 place-items-center rounded bg-navy text-white"><UserRound size={17}/></button></div></div></div></header>;
+}
