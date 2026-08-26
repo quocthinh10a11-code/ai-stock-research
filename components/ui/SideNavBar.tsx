@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Compass, Gauge, LayoutDashboard, PieChart, Settings } from "lucide-react";
+import { ArrowLeft, BarChart2, Compass, Gauge, PieChart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-const items = [{ href: "/home", label: "Overview", icon: LayoutDashboard }, { href: "/discover", label: "Discover", icon: Compass }, { href: "/technical", label: "Technical", icon: BarChart2 }, { href: "/sentiment", label: "Sentiment", icon: Gauge }, { href: "/portfolio", label: "Portfolio", icon: PieChart }];
+const items = [{ href: "/home", label: "Back", icon: ArrowLeft }, { href: "/discover", label: "Discover", icon: Compass }, { href: "/technical", label: "Technical", icon: BarChart2 }, { href: "/sentiment", label: "Sentiment", icon: Gauge }, { href: "/portfolio", label: "Portfolio", icon: PieChart }];
 export function SideNavBar() { const path = usePathname(); return <aside className="fixed bottom-0 left-0 top-16 z-30 hidden w-60 border-r border-slate-200 bg-navy text-slate-300 lg:flex lg:flex-col"><nav className="flex-1 space-y-1 p-3">{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={cn("flex items-center gap-3 rounded px-3 py-2.5 font-display text-sm font-medium transition-colors", path.startsWith(href) ? "bg-white/10 text-white" : "hover:bg-white/5 hover:text-white")}><Icon size={17}/>{label}</Link>)}</nav><div className="border-t border-white/10 p-3"><button className="flex w-full items-center gap-3 rounded px-3 py-2.5 text-sm hover:bg-white/5"><Settings size={17}/>Settings</button><p className="px-3 pt-4 text-[10px] leading-4 text-slate-500">Market data is delayed. Research, not investment advice.</p></div></aside>; }
