@@ -65,3 +65,27 @@ export interface PredictionLogRow {
   outcome_status: PredictionOutcome;
   created_at: ISOTimestamp;
 }
+
+export interface UserWatchlistRow {
+  id: number;
+  user_id: string;
+  symbol: string;
+  added_at: ISOTimestamp;
+  notes: string | null;
+}
+
+export interface ResearchHistoryRow {
+  id: number;
+  user_id: string;
+  symbol: string;
+  viewed_at: ISOTimestamp;
+}
+
+export type PortfolioStrategyType = "growth" | "dividend" | "value" | "defensive";
+
+export interface UserPortfolioSelectionRow {
+  id: number;
+  user_id: string;
+  strategy_type: PortfolioStrategyType;
+  selected_at: ISOTimestamp;
+}
