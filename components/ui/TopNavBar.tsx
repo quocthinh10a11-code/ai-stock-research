@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell, Search, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isMockStockSymbol, mockStockSymbols, normalizeStockSymbol } from "@/lib/mock-symbols";
+import { isSupportedStockSymbol, marketUniverse, normalizeStockSymbol } from "@/lib/market-universe";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 
@@ -18,7 +18,7 @@ export function TopNavBar({ variant = "app" }: { variant?: "public" | "home" | "
     event.preventDefault();
     const clean = normalizeStockSymbol(symbol);
     if (!clean) { setSearchError("Enter a ticker."); return; }
-    if (!isMockStockSymbol(clean)) { setSearchError(`${clean} is unavailable. Try ${mockStockSymbols.slice(0, 3).join(", ")}.`); return; }
+    if (!isSupportedStockSymbol(clean)) { setSearchError(`${clean} is unavailable. Try ${marketUniverse.slice(0, 3).join(", ")}.`); return; }
     setSearchError("");
     router.push(`/analysis/${encodeURIComponent(clean)}`);
   }

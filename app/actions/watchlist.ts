@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeStockSymbol } from "@/lib/mock-symbols";
+import { normalizeStockSymbol } from "@/lib/market-universe";
 
 export interface WatchlistActionResult {
   ok: boolean;

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Search } from "lucide-react";
-import { isMockStockSymbol, mockStockSymbols, normalizeStockSymbol } from "@/lib/mock-symbols";
+import { isSupportedStockSymbol, marketUniverse, normalizeStockSymbol } from "@/lib/market-universe";
 
 export function HeroSearch() {
   const [symbol, setSymbol] = useState("");
@@ -16,8 +16,8 @@ export function HeroSearch() {
       setError("Enter a stock ticker to continue.");
       return;
     }
-    if (!isMockStockSymbol(clean)) {
-      setError(`Ticker ${clean} is not available yet. Try ${mockStockSymbols.slice(0, 5).join(", ")}.`);
+    if (!isSupportedStockSymbol(clean)) {
+      setError(`Ticker ${clean} is not available yet. Try ${marketUniverse.slice(0, 5).join(", ")}.`);
       return;
     }
     setError("");

@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { normalizeStockSymbol } from "@/lib/mock-symbols";
+import { normalizeStockSymbol } from "@/lib/market-universe";
 
 export async function recordResearchView(symbol: string) {
   const normalized = normalizeStockSymbol(symbol);
