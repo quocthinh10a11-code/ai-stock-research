@@ -1,5 +1,10 @@
 export interface EvidenceItem { label: string; value: string; detail: string; tone?: "positive" | "negative" | "neutral"; }
-export interface StockAnalysis { symbol: string; company: string; price: number; change: number; score: number; summary: string; evidence: EvidenceItem[]; }
+export interface FinancialPeriod { period: string; periodEnd: ISODate; revenue: number | null; grossProfit: number | null; operatingProfit: number | null; profitBeforeTax: number | null; netProfit: number | null; eps: number | null; unit: string; }
+export interface RelatedStock { symbol: string; company: string; exchange: string; price: number | null; change: number | null; }
+export interface ResearchCitation { title: string; url: string; source?: string; }
+export interface TrendForecast { horizon: "1M" | "3M" | "6M"; direction: MarketBias; bullishProbability: number; neutralProbability: number; bearishProbability: number; rationale: string; }
+export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
+export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; }
 export interface RankingItem { rank: number; symbol: string; company: string; sector: string; price: number; change: number; score: number; rating: "Strong Buy" | "Buy" | "Neutral" | "Sell"; rsi14?: number; relativeVolume?: number; trend?: "Bullish" | "Bearish" | "Flat"; }
 export interface PortfolioStrategy { id: string; name: string; description: string; risk: string; returnYtd: number; volatility: number; allocation: { symbol: string; company: string; weight: number; change: number }[]; }
 export interface NewsItem { id: string; headline: string; source: string; publishedAt: string; sentiment: "positive" | "negative" | "neutral"; summary: string; }

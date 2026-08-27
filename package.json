@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "sync:market": "python scripts/sync_market_data.py"
+    "sync:market": "python scripts/sync_market_data.py",
+    "sync:companies": "python scripts/sync_company_research.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

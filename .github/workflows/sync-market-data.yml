@@ -2,6 +2,11 @@ name: Sync Vietnam market data
 
 on:
   workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Comma-separated tickers to refresh (optional)"
+        required: false
+        default: ""
   schedule:
     - cron: "30 10 * * 1-5"
 
@@ -23,3 +28,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          MARKET_SYMBOLS: ${{ inputs.symbols }}
+      - run: python scripts/sync_company_research.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          FUNDAMENTAL_SYMBOLS: ${{ inputs.symbols }}

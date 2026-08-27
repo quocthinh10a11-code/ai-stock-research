@@ -19,7 +19,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import pandas as pd
-from vnstock import Market
+from vnstock import Listing, Market
 
 
 STOCKS: dict[str, tuple[str, str, str]] = {
@@ -145,6 +145,33 @@ def direction(condition: bool) -> str:
     return "supporting" if condition else "contradicting"
 
 
+def extend_stock_metadata(symbols: list[str]) -> None:
+    unknown = [symbol for symbol in symbols if symbol not in STOCKS]
+    if not unknown:
+        return
+    frame = Listing(source=os.getenv("VNSTOCK_SOURCE", "KBS")).all_symbols()
+    lowered = {str(column).lower(): str(column) for column in frame.columns}
+    symbol_column = next((lowered[name] for name in ("symbol", "ticker", "code") if name in lowered), None)
+    company_column = next((lowered[name] for name in ("organ_name", "company_name", "name", "organname") if name in lowered), None)
+    exchange_column = next((lowered[name] for name in ("exchange", "comgroupcode", "exchange_code") if name in lowered), None)
+    sector_column = next((lowered[name] for name in ("icb_name3", "industry", "sector", "icb_name2") if name in lowered), None)
+    if not symbol_column or not exchange_column:
+        raise RuntimeError(f"VNStock listing response changed; columns={list(frame.columns)}")
+    wanted = set(unknown)
+    for record in frame.to_dict("records"):
+        symbol = str(record.get(symbol_column, "")).strip().upper()
+        if symbol not in wanted:
+            continue
+        exchange = str(record.get(exchange_column, "")).strip().upper().replace("HSX", "HOSE")
+        if exchange not in {"HOSE", "HNX", "UPCOM"}:
+            continue
+        STOCKS[symbol] = (
+            str(record.get(company_column) or symbol).strip(),
+            str(record.get(sector_column) or "Unclassified").strip(),
+            exchange,
+        )
+
+
 def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str], start: str, end: str, multiplier: float) -> int:
     company, sector, exchange = metadata
     client.upsert("stocks", [{"symbol": symbol, "company_name": company, "sector": sector, "exchange": exchange, "updated_at": f"{date.today().isoformat()}T00:00:00Z"}], "symbol")
@@ -216,7 +243,9 @@ def main() -> int:
     end_date = date.today()
     start_date = end_date - timedelta(days=int(os.getenv("MARKET_LOOKBACK_DAYS", "240")))
     multiplier = float(os.getenv("VNSTOCK_PRICE_MULTIPLIER", "1000"))
-    requested = [item.strip().upper() for item in os.getenv("MARKET_SYMBOLS", ",".join(STOCKS)).split(",") if item.strip()]
+    requested_value = os.getenv("MARKET_SYMBOLS", "").strip() or ",".join(STOCKS)
+    requested = [item.strip().upper() for item in requested_value.split(",") if item.strip()]
+    extend_stock_metadata(requested)
     unknown = [symbol for symbol in requested if symbol not in STOCKS]
     if unknown:
         raise RuntimeError(f"Unknown symbols in MARKET_SYMBOLS: {', '.join(unknown)}")

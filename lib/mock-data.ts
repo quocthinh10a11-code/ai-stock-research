@@ -10,7 +10,7 @@ export const rankings: RankingItem[] = [
   { rank: 4, symbol: "VCB", company: "Vietcombank", sector: "Financials", price: 91800, change: -0.43, score: 77, rating: "Neutral" },
   { rank: 5, symbol: "VNM", company: "Vinamilk", sector: "Consumer", price: 66700, change: -1.04, score: 69, rating: "Sell" }
 ];
-export const analysis: StockAnalysis = { symbol: "FPT", company: "FPT Corporation", price: 134500, change: 2.36, score: 92, summary: "Growth remains supported by overseas IT services and the domestic digital-transformation backlog.", evidence: [
+export const analysis: StockAnalysis = { symbol: "FPT", company: "FPT Corporation", sector: "Technology", exchange: "HOSE", price: 134500, change: 2.36, score: 92, summary: "Growth remains supported by overseas IT services and the domestic digital-transformation backlog.", financials: [], related: [], updatedAt: null, evidence: [
   { label: "Revenue growth", value: "+21.4%", detail: "Trailing twelve months", tone: "positive" }, { label: "ROE", value: "27.8%", detail: "Above sector median", tone: "positive" }, { label: "Forward P/E", value: "21.6×", detail: "Premium valuation", tone: "neutral" }
 ] };
 export const news: NewsItem[] = [
