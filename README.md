@@ -4,11 +4,19 @@ Next.js 15 research workspace for Vietnamese equities on HOSE, HNX and UPCOM, co
 
 ## Local setup
 
-1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env.local`.
-3. Add your Supabase project URL and publishable key.
-4. Apply the SQL migrations in `supabase/migrations/` in filename order.
-5. Run `npm run dev`.
+1. Install Node dependencies with `npm install`.
+2. Keep Python packages on the project drive by creating and activating a project-local environment:
+
+   ```powershell
+   python -m venv .venv
+   & ".\.venv\Scripts\Activate.ps1"
+   python -m pip install -r requirements-market-data.txt
+   ```
+
+3. Copy `.env.example` to `.env.local`.
+4. Add your Supabase project URL and publishable key.
+5. Apply the SQL migrations in `supabase/migrations/` in filename order.
+6. Run `npm run dev`.
 
 ## Environment variables
 
