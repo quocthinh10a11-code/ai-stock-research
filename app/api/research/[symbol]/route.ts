@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAnalysis } from "@/lib/data/get-analysis";
 import { requestGroundedGemini, requestSynthesisGemini } from "@/lib/gemini-provider";
 import { normalizeStockSymbol } from "@/lib/market-universe";
+import { normalizeDecisionMatrix } from "@/lib/research-report";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicDataClient } from "@/lib/supabase/public-data";
@@ -29,13 +30,15 @@ function normalizeForecast(value: unknown, horizon: TrendForecast["horizon"]): T
 }
 
 function reportFromRow(row: Record<string, unknown>, cached: boolean): GroundedResearch {
+  const citations = Array.isArray(row.citations_json) ? row.citations_json as GroundedResearch["citations"] : [];
   return {
     summary: String(row.summary_text),
     outlook: String(row.outlook_text),
     catalysts: Array.isArray(row.catalysts_json) ? row.catalysts_json.map(String) : [],
     risks: Array.isArray(row.risks_json) ? row.risks_json.map(String) : [],
     forecasts: Array.isArray(row.forecast_json) ? row.forecast_json as TrendForecast[] : Object.values((row.forecast_json ?? {}) as Record<string, TrendForecast>),
-    citations: Array.isArray(row.citations_json) ? row.citations_json as GroundedResearch["citations"] : [],
+    decisionMatrix: normalizeDecisionMatrix(row.decision_matrix_json, citations.length),
+    citations,
     asOf: String(row.as_of),
     cached,
     model: String(row.model),
@@ -57,7 +60,7 @@ export async function POST(_: Request, context: { params: Promise<{ symbol: stri
   const cutoff = new Date(Date.now() - cacheMinutes * 60_000).toISOString();
   if (publicClient) {
     const { data: cached } = await publicClient.from("ai_research_reports").select("*").eq("symbol", symbol).gte("expires_at", new Date().toISOString()).gte("requested_at", cutoff).order("requested_at", { ascending: false }).limit(1).maybeSingle();
-    if (cached) {
+    if (cached && Array.isArray(cached.decision_matrix_json) && cached.decision_matrix_json.length > 0) {
       const cachedReport = reportFromRow(cached, true);
       if (cachedReport.citations.length > 0) return NextResponse.json(cachedReport);
     }
@@ -76,15 +79,15 @@ export async function POST(_: Request, context: { params: Promise<{ symbol: stri
     return NextResponse.json({ error: "The live research quota could not be verified. Please retry." }, { status: 503 });
   }
   if (!reserved) return NextResponse.json({ error: "The free daily AI research budget has been reached. Try again tomorrow." }, { status: 429 });
-  const financialContext = analysis.financials.map((period) => ({ period: period.period, revenue: period.revenue, grossProfit: period.grossProfit, netProfit: period.netProfit, eps: period.eps, unit: period.unit }));
+  const financialContext = analysis.financials.map((period) => ({ period: period.period, revenue: period.revenue, grossProfit: period.grossProfit, netProfit: period.netProfit, eps: period.eps, totalAssets: period.totalAssets, totalLiabilities: period.totalLiabilities, equity: period.equity, operatingCashFlow: period.operatingCashFlow, unit: period.unit }));
   const asOf = new Date().toISOString();
-  const basePrompt = `You are a cautious Vietnamese equity research assistant. Analyze ${analysis.symbol} (${analysis.company}, ${analysis.exchange}, sector ${analysis.sector}) as of ${asOf}. Write all narrative fields in Vietnamese. Perform horizontal financial analysis from the supplied quarterly figures: discuss revenue and profit direction, QoQ/YoY patterns when comparable periods exist, profitability quality, and material gaps. Never invent a number, filing, event, or source. Clearly distinguish verified facts from forward-looking scenarios. This is not investment advice.\n\nStructured market and financial data: ${JSON.stringify({ price: analysis.price, changePct: analysis.change, technicalEvidence: analysis.evidence, quarterlyFinancials: financialContext })}\n\nReturn ONLY valid JSON with this shape: {"summary":"financial-performance insight with 3-5 factual sentences","outlook":"balanced forward-looking synthesis","catalysts":["..."],"risks":["..."],"forecasts":[{"horizon":"1M","direction":"bullish|neutral|bearish","bullishProbability":0,"neutralProbability":0,"bearishProbability":0,"rationale":"..."},{"horizon":"3M",...},{"horizon":"6M",...}],"newsInsights":[{"sourceIndex":1,"insight":"why this source matters to the company","sentiment":"positive|negative|neutral"}]}. Probabilities in each horizon must sum to 100. Forecasts are uncalibrated scenarios, not promises or price targets.`;
+  const basePrompt = `You are a cautious Vietnamese equity research assistant. Analyze ${analysis.symbol} (${analysis.company}, ${analysis.exchange}, sector ${analysis.sector}) as of ${asOf}. Write all narrative fields in Vietnamese. Perform horizontal analysis across every supplied quarter. Never invent a number, filing, event, peer average, historical valuation, or source. A metric value MUST be null when it is not explicitly present in structured data or a cited web source. FCF requires both operating cash flow and capital expenditure; otherwise FCF is null. Clearly distinguish verified facts from scenarios. This is not investment advice.\n\nReference heuristics, never guarantees: stable ROE above 15% supports long-term holding; ROE falling for three quarters is a deterioration warning; price 20-30% below a defensible intrinsic value supports accumulation; P/E above two standard deviations of a verified five-year history indicates overheating; D/E below 1 with positive cash flow supports resilience; sharply rising D/E with negative cash flow is a sell warning; Beta 1.2-1.5 plus a verified EPS surge can support short-term momentum; Beta above 1.5 in a weak market supports reducing exposure.\n\nStructured market and financial data: ${JSON.stringify({ price: analysis.price, changePct: analysis.change, technicalEvidence: analysis.evidence, quarterlyFinancials: financialContext })}\n\nReturn ONLY valid JSON with this shape: {"summary":"3 factual sentences","outlook":"balanced forward view","catalysts":["..."],"risks":["..."],"forecasts":[{"horizon":"1M","direction":"bullish|neutral|bearish","bullishProbability":0,"neutralProbability":0,"bearishProbability":0,"rationale":"..."},{"horizon":"3M","direction":"bullish|neutral|bearish","bullishProbability":0,"neutralProbability":0,"bearishProbability":0,"rationale":"..."},{"horizon":"6M","direction":"bullish|neutral|bearish","bullishProbability":0,"neutralProbability":0,"bearishProbability":0,"rationale":"..."}],"decisionMatrix":[{"group":"business_performance","metrics":[{"name":"EPS","value":null,"trend":null,"sourceIndices":[]},{"name":"ROE","value":null,"trend":null,"sourceIndices":[]}],"analysis":"one sentence","action":"buy|accumulate|hold|reduce|sell|insufficient_data","confidence":"low|medium|high","rationale":"one sentence"},{"group":"valuation","metrics":[{"name":"P/E","value":null,"trend":null,"sourceIndices":[]},{"name":"P/B","value":null,"trend":null,"sourceIndices":[]},{"name":"PEG","value":null,"trend":null,"sourceIndices":[]}],"analysis":"...","action":"...","confidence":"...","rationale":"..."},{"group":"financial_health","metrics":[{"name":"D/E","value":null,"trend":null,"sourceIndices":[]},{"name":"FCF","value":null,"trend":null,"sourceIndices":[]}],"analysis":"...","action":"...","confidence":"...","rationale":"..."},{"group":"risk_momentum","metrics":[{"name":"Beta","value":null,"trend":null,"sourceIndices":[]},{"name":"Dividend Yield","value":null,"trend":null,"sourceIndices":[]}],"analysis":"...","action":"...","confidence":"...","rationale":"..."}],"newsInsights":[{"sourceIndex":1,"insight":"why this source matters","sentiment":"positive|negative|neutral"}]}. sourceIndices are 1-based references to supplied web sources. Probabilities per horizon sum to 100.`;
   let response: Response;
   let model: string;
   let webSources: WebResearchSource[] = [];
   const tavilyKey = process.env.TAVILY_API_KEY;
   if (tavilyKey) {
-    const search = await searchFinancialWeb({ apiKey: tavilyKey, symbol: analysis.symbol, company: analysis.company });
+    const search = await searchFinancialWeb({ apiKey: tavilyKey, symbol: analysis.symbol, company: analysis.company, exchange: analysis.exchange });
     if (!search.ok) {
       console.error("Tavily financial search failed", { status: search.status, detail: search.detail.slice(0, 500) });
       return NextResponse.json({ error: search.message }, { status: search.status === 429 || search.status === 432 || search.status === 433 ? 429 : 502 });
@@ -156,12 +159,13 @@ export async function POST(_: Request, context: { params: Promise<{ symbol: stri
     catalysts: Array.isArray(parsed.catalysts) ? parsed.catalysts.map(String).slice(0, 6) : [],
     risks: Array.isArray(parsed.risks) ? parsed.risks.map(String).slice(0, 6) : [],
     forecasts,
+    decisionMatrix: normalizeDecisionMatrix(parsed.decisionMatrix, citations.length),
     citations,
     asOf,
     cached: false,
     model,
   };
-  const { error: cacheError } = await admin.from("ai_research_reports").insert({ symbol, as_of: asOf, model, summary_text: report.summary, outlook_text: report.outlook, catalysts_json: report.catalysts, risks_json: report.risks, forecast_json: report.forecasts, citations_json: report.citations, expires_at: new Date(Date.now() + cacheMinutes * 60_000).toISOString() });
+  const { error: cacheError } = await admin.from("ai_research_reports").insert({ symbol, as_of: asOf, model, summary_text: report.summary, outlook_text: report.outlook, catalysts_json: report.catalysts, risks_json: report.risks, forecast_json: report.forecasts, decision_matrix_json: report.decisionMatrix, citations_json: report.citations, expires_at: new Date(Date.now() + cacheMinutes * 60_000).toISOString() });
   if (cacheError) console.error("AI research cache write failed", cacheError.message);
   return NextResponse.json(report);
 }

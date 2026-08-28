@@ -155,7 +155,7 @@ export async function requestSynthesisGemini({
         generationConfig: {
           temperature: 0.15,
           responseMimeType: "application/json",
-          maxOutputTokens: 2_048,
+          maxOutputTokens: 3_072,
           thinkingConfig: { thinkingLevel: "minimal" },
         },
       }),

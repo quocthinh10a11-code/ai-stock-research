@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { searchFinancialWeb } from "../lib/tavily-search.ts";
 
-test("normalizes realtime Tavily finance results", async () => {
+test("normalizes Vietnamese exchange-aware Tavily results", async () => {
   const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body));
-    assert.equal(request.topic, "finance");
+    assert.equal(request.topic, "general");
+    assert.match(request.query, /MBS/);
+    assert.match(request.query, /HNX/);
     assert.equal(request.search_depth, "basic");
     assert.equal(request.max_results, 5);
     assert.equal(request.chunks_per_source, 1);
@@ -17,7 +19,7 @@ test("normalizes realtime Tavily finance results", async () => {
     }] });
   }) as typeof fetch;
 
-  const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "FPT", company: "FPT Corporation", fetchImpl });
+  const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "MBS", company: "Công ty Cổ phần Chứng khoán MB", exchange: "HNX", fetchImpl });
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(result.results[0].source, "example.com");
@@ -27,7 +29,7 @@ test("normalizes realtime Tavily finance results", async () => {
 
 test("classifies exhausted Tavily free quota", async () => {
   const fetchImpl = (async () => new Response("limit reached", { status: 432 })) as typeof fetch;
-  const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "FPT", company: "FPT Corporation", fetchImpl });
+  const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "FPT", company: "FPT Corporation", exchange: "HOSE", fetchImpl });
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.message, /quota/i);
 });

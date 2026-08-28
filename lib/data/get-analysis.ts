@@ -33,7 +33,7 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
 
   const { data: synthesis } = await supabase.from("agent_analysis").select("summary_text").eq("symbol", normalized).order("analysis_date", { ascending: false }).limit(1).maybeSingle();
   const { data: signals } = await supabase.from("evidence_snapshots").select("signal_name,signal_value,signal_direction,source,date").eq("symbol", normalized).order("date", { ascending: false }).limit(8);
-  const { data: financialRows } = await supabase.from("financial_periods").select("period_label,period_end,revenue,gross_profit,operating_profit,profit_before_tax,net_profit,eps,unit").eq("symbol", normalized).eq("period_type", "quarter").not("period_end", "is", null).order("period_end", { ascending: false }).limit(8);
+  const { data: financialRows } = await supabase.from("financial_periods").select("period_label,period_end,revenue,gross_profit,operating_profit,profit_before_tax,net_profit,eps,total_assets,total_liabilities,equity,operating_cash_flow,unit").eq("symbol", normalized).eq("period_type", "quarter").not("period_end", "is", null).order("period_end", { ascending: false }).limit(20);
   const { data: relatedRows } = await supabase.from("stocks").select("symbol,company_name,exchange").eq("sector", stock.sector).neq("symbol", normalized).limit(5);
   const relatedSymbols = (relatedRows ?? []).map((row) => row.symbol);
   const { data: relatedSnapshots } = relatedSymbols.length ? await supabase.from("latest_market_snapshots").select("symbol,close,previous_close").in("symbol", relatedSymbols) : { data: [] };
@@ -69,6 +69,10 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
       profitBeforeTax: row.profit_before_tax == null ? null : Number(row.profit_before_tax),
       netProfit: row.net_profit == null ? null : Number(row.net_profit),
       eps: row.eps == null ? null : Number(row.eps),
+      totalAssets: row.total_assets == null ? null : Number(row.total_assets),
+      totalLiabilities: row.total_liabilities == null ? null : Number(row.total_liabilities),
+      equity: row.equity == null ? null : Number(row.equity),
+      operatingCashFlow: row.operating_cash_flow == null ? null : Number(row.operating_cash_flow),
       unit: row.unit,
     } satisfies FinancialPeriod)),
     related: (relatedRows ?? []).map((row) => {

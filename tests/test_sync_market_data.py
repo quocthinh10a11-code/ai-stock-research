@@ -18,7 +18,22 @@ class SuccessfulResponse:
         return False
 
 
+class JsonResponse(SuccessfulResponse):
+    status = 200
+
+    def read(self):
+        return b'[{"symbol":"MBS"},{"symbol":"MBS"},{"symbol":"VGI"}]'
+
+
 class SupabaseRestRetryTests(unittest.TestCase):
+    @patch.dict(os.environ, {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_SECRET_KEY": "test-secret",
+    }, clear=False)
+    @patch("scripts.sync_market_data.urlopen", return_value=JsonResponse())
+    def test_reads_unique_recent_research_symbols(self, _mocked_urlopen):
+        self.assertEqual(SupabaseRest().recent_research_symbols(), ["MBS", "VGI"])
+
     @patch.dict(os.environ, {
         "SUPABASE_URL": "https://example.supabase.co",
         "SUPABASE_SECRET_KEY": "test-secret",

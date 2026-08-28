@@ -66,7 +66,7 @@ test("uses Gemini 3.6 for free synthesis without the Google Search tool", async 
   if (result.ok) assert.equal(result.model, "gemini-3.6-flash");
   assert.equal("tools" in requestBody, false);
   assert.deepEqual((requestBody.generationConfig as Record<string, unknown>).thinkingConfig, { thinkingLevel: "minimal" });
-  assert.equal((requestBody.generationConfig as Record<string, unknown>).maxOutputTokens, 2_048);
+  assert.equal((requestBody.generationConfig as Record<string, unknown>).maxOutputTokens, 3_072);
 });
 
 test("does not misreport a network failure as a synthesis timeout", async () => {

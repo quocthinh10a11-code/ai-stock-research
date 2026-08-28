@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sys
 import time
 from datetime import date, timedelta
@@ -35,6 +36,8 @@ STOCKS: dict[str, tuple[str, str, str]] = {
     "VPB": ("VPBank", "Financials", "HOSE"),
     "VNM": ("Vinamilk", "Consumer", "HOSE"),
     "MBB": ("MB Bank", "Financials", "HOSE"),
+    "MBS": ("MB Securities", "Financials", "HNX"),
+    "VGI": ("Viettel Global", "Technology", "UPCOM"),
 }
 
 
@@ -94,6 +97,28 @@ class SupabaseRest:
                 last_error = error
             print(f"Retrying Supabase {table} upsert after attempt {attempt}: {last_error}", file=sys.stderr, flush=True)
             time.sleep(retry_delay * (2 ** (attempt - 1)))
+
+    def recent_research_symbols(self, limit: int = 20) -> list[str]:
+        query = urlencode({"select": "symbol", "order": "viewed_at.desc", "limit": str(limit * 4)})
+        request = Request(
+            f"{self.url}/rest/v1/research_history?{query}",
+            method="GET",
+            headers={"apikey": self.key, "Authorization": f"Bearer {self.key}"},
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                rows = json.loads(response.read().decode("utf-8"))
+        except (HTTPError, URLError, TimeoutError, ConnectionError, ValueError) as error:
+            print(f"Could not read recent research symbols; using defaults: {error}", file=sys.stderr, flush=True)
+            return []
+        unique: list[str] = []
+        for row in rows:
+            symbol = str(row.get("symbol", "")).strip().upper()
+            if re.fullmatch(r"[A-Z0-9]{2,10}", symbol) and symbol not in unique:
+                unique.append(symbol)
+            if len(unique) >= limit:
+                break
+        return unique
 
 
 def calculate_indicators(frame: pd.DataFrame) -> pd.DataFrame:
@@ -255,7 +280,8 @@ def main() -> int:
     end_date = date.today()
     start_date = end_date - timedelta(days=int(os.getenv("MARKET_LOOKBACK_DAYS", "240")))
     multiplier = float(os.getenv("VNSTOCK_PRICE_MULTIPLIER", "1000"))
-    requested_value = os.getenv("MARKET_SYMBOLS", "").strip() or ",".join(STOCKS)
+    configured = os.getenv("MARKET_SYMBOLS", "").strip()
+    requested_value = configured or ",".join(dict.fromkeys([*STOCKS, *client.recent_research_symbols()]))
     requested = [item.strip().upper() for item in requested_value.split(",") if item.strip()]
     extend_stock_metadata(requested)
     unknown = [symbol for symbol in requested if symbol not in STOCKS]

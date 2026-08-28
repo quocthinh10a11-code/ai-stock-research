@@ -2,8 +2,8 @@
 
 The analysis workspace combines four free-tier sources:
 
-- VNStock Community for the HOSE, HNX and UPCOM catalog, OHLCV, and up to eight default financial-report periods.
-- Tavily Finance Search for current public URLs and source excerpts (1,000 free credits/month, no card required).
+- VNStock Community for the HOSE, HNX and UPCOM catalog, OHLCV, and up to 20 financial-report periods.
+- Tavily Search for current Vietnamese public URLs and source excerpts (free quota applies).
 - Gemini 3.6 Flash for synthesis of Tavily results without the paid Google Search tool.
 - Gemini 2.5 Flash-Lite Google Search grounding as a legacy fallback when Tavily is not configured.
 - Supabase Free for public market data and a 15-minute AI research cache.
@@ -12,7 +12,10 @@ The database reserves each uncached provider request in an atomic UTC daily coun
 
 ## Apply the database migration
 
-Run `supabase/migrations/20260826050000_expand_company_research.sql` in the Supabase SQL Editor, or use `npx supabase db push` after linking the project.
+Run the migrations in filename order. Existing deployments must at least apply:
+
+1. `supabase/migrations/20260826050000_expand_company_research.sql`
+2. `supabase/migrations/20260828090000_add_ai_decision_matrix.sql`
 
 ## Required secrets
 
@@ -38,7 +41,7 @@ python scripts/sync_company_research.py
 Remove-Item Env:SUPABASE_URL, Env:SUPABASE_SECRET_KEY
 ```
 
-The default run loads the complete three-exchange catalog by requesting HOSE, HNX and UPCOM separately, then loads fundamentals for the initial tracked universe. To refresh structured chart data for any other listed ticker:
+The default run loads the complete three-exchange catalog and refreshes the default universe plus up to 20 recently researched symbols. A search therefore runs web research immediately and joins the next scheduled structured-data refresh without a manual workflow run. To force an immediate refresh for selected tickers:
 
 ```powershell
 $env:MARKET_SYMBOLS = "ACB,VGI"

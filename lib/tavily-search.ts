@@ -33,11 +33,13 @@ export async function searchFinancialWeb({
   apiKey,
   symbol,
   company,
+  exchange,
   fetchImpl = fetch,
 }: {
   apiKey: string;
   symbol: string;
   company: string;
+  exchange: string;
   fetchImpl?: typeof fetch;
 }): Promise<TavilySearchResult> {
   let response: Response;
@@ -46,11 +48,11 @@ export async function searchFinancialWeb({
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: `"${company}" ${symbol} Vietnam financial results revenue profit earnings report stock`,
+        query: `"${symbol}" "${company}" ${exchange} báo cáo tài chính kết quả kinh doanh EPS ROE P/E P/B cổ tức mới nhất`,
         search_depth: "basic",
         chunks_per_source: 1,
         max_results: 5,
-        topic: "finance",
+        topic: "general",
         time_range: "year",
         include_answer: false,
         include_raw_content: false,

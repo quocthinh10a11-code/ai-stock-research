@@ -158,7 +158,7 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                 "unit": unit,
                 "source": f"vnstock-community/{source.lower()}",
                 **combined[period],
-            } for period in period_order[:8]]
+            } for period in period_order[:20]]
             if not rows:
                 raise RuntimeError("provider returned no financial periods")
             client.upsert("financial_periods", rows, "symbol,period_type,period_label")
@@ -180,7 +180,8 @@ def main() -> int:
     for index in range(0, len(stocks), 250):
         client.upsert("stocks", stocks[index:index + 250], "symbol")
     print(f"Synced catalog: {len(stocks)} symbols across HOSE, HNX and UPCOM", flush=True)
-    requested_value = os.getenv("FUNDAMENTAL_SYMBOLS", "").strip() or ",".join(STOCKS)
+    configured = os.getenv("FUNDAMENTAL_SYMBOLS", "").strip()
+    requested_value = configured or ",".join(dict.fromkeys([*STOCKS, *client.recent_research_symbols()]))
     requested = [item.strip().upper() for item in requested_value.split(",") if item.strip()]
     initial_delay = float(os.getenv("VNSTOCK_INITIAL_DELAY_SECONDS", "0"))
     if requested and initial_delay > 0:
