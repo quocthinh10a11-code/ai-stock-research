@@ -7,6 +7,8 @@ test("normalizes realtime Tavily finance results", async () => {
     const request = JSON.parse(String(init?.body));
     assert.equal(request.topic, "finance");
     assert.equal(request.search_depth, "basic");
+    assert.equal(request.max_results, 5);
+    assert.equal(request.chunks_per_source, 1);
     return Response.json({ results: [{
       title: "FPT reports quarterly growth",
       url: "https://example.com/fpt-results",

@@ -48,8 +48,8 @@ export async function searchFinancialWeb({
       body: JSON.stringify({
         query: `"${company}" ${symbol} Vietnam financial results revenue profit earnings report stock`,
         search_depth: "basic",
-        chunks_per_source: 2,
-        max_results: 8,
+        chunks_per_source: 1,
+        max_results: 5,
         topic: "finance",
         time_range: "year",
         include_answer: false,
@@ -88,7 +88,7 @@ export async function searchFinancialWeb({
     return [{
       title: String(item.title ?? new URL(url).hostname).slice(0, 300),
       url,
-      content: String(item.content ?? "").slice(0, 1_500),
+      content: String(item.content ?? "").slice(0, 700),
       publishedAt: item.published_date ? String(item.published_date) : null,
       source: new URL(url).hostname.replace(/^www\./, ""),
     }];

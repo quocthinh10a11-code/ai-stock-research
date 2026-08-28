@@ -144,6 +144,7 @@ export async function requestSynthesisGemini({
   model?: string;
   fetchImpl?: typeof fetch;
 }): Promise<SynthesisGeminiResult> {
+  const startedAt = Date.now();
   let response: Response;
   try {
     response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
@@ -151,13 +152,28 @@ export async function requestSynthesisGemini({
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.15, responseMimeType: "application/json" },
+        generationConfig: {
+          temperature: 0.15,
+          responseMimeType: "application/json",
+          maxOutputTokens: 2_048,
+          thinkingConfig: { thinkingLevel: "minimal" },
+        },
       }),
       signal: AbortSignal.timeout(40_000),
     });
   } catch (caught) {
-    const detail = caught instanceof Error ? caught.message : String(caught);
-    return { ok: false, error: { httpStatus: 502, providerStatus: null, detail, message: "Gemini synthesis timed out. Please retry." } };
+    const elapsedMs = Date.now() - startedAt;
+    const detail = `${caught instanceof Error ? caught.name : "RequestError"}: ${caught instanceof Error ? caught.message : String(caught)} after ${elapsedMs}ms`;
+    const timedOut = caught instanceof Error && (caught.name === "TimeoutError" || caught.name === "AbortError");
+    return {
+      ok: false,
+      error: {
+        httpStatus: 502,
+        providerStatus: null,
+        detail,
+        message: timedOut ? "Gemini synthesis exceeded the response deadline. Please retry." : "Gemini synthesis could not reach the provider. Please retry.",
+      },
+    };
   }
   if (response.ok) return { ok: true, model, response };
   const detail = (await response.text()).slice(0, 1_500);

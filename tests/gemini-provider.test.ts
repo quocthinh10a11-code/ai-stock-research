@@ -65,4 +65,13 @@ test("uses Gemini 3.6 for free synthesis without the Google Search tool", async 
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.model, "gemini-3.6-flash");
   assert.equal("tools" in requestBody, false);
+  assert.deepEqual((requestBody.generationConfig as Record<string, unknown>).thinkingConfig, { thinkingLevel: "minimal" });
+  assert.equal((requestBody.generationConfig as Record<string, unknown>).maxOutputTokens, 2_048);
+});
+
+test("does not misreport a network failure as a synthesis timeout", async () => {
+  const fetchImpl = (async () => { throw new TypeError("fetch failed"); }) as typeof fetch;
+  const result = await requestSynthesisGemini({ apiKey: "test-key", prompt: "source snippets", fetchImpl });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.error.message, /could not reach/i);
 });
