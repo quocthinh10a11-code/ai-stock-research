@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from calendar import monthrange
 from datetime import date
 from typing import Any
@@ -105,14 +106,20 @@ def report_values(frame: pd.DataFrame) -> tuple[list[str], dict[str, dict[str, f
 
 def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> tuple[int, str]:
     errors: list[str] = []
+    request_delay = float(os.getenv("VNSTOCK_FINANCE_REQUEST_DELAY_SECONDS", "4"))
     for source in sources:
         try:
             finance = Finance(symbol=symbol, source=source)
-            frames = (
-                finance.income_statement(period="quarter"),
-                finance.balance_sheet(period="quarter"),
-                finance.cash_flow(period="quarter"),
-            )
+            frames_list: list[pd.DataFrame] = []
+            for fetch_report in (
+                finance.income_statement,
+                finance.balance_sheet,
+                finance.cash_flow,
+            ):
+                if request_delay > 0:
+                    time.sleep(request_delay)
+                frames_list.append(fetch_report(period="quarter"))
+            frames = tuple(frames_list)
             if any(frame.empty for frame in frames):
                 raise RuntimeError("provider returned an empty financial report")
             period_order: list[str] = []
@@ -157,6 +164,10 @@ def main() -> int:
     print(f"Synced catalog: {len(stocks)} symbols across HOSE, HNX and UPCOM", flush=True)
     requested_value = os.getenv("FUNDAMENTAL_SYMBOLS", "").strip() or ",".join(STOCKS)
     requested = [item.strip().upper() for item in requested_value.split(",") if item.strip()]
+    initial_delay = float(os.getenv("VNSTOCK_INITIAL_DELAY_SECONDS", "0"))
+    if requested and initial_delay > 0:
+        print(f"Waiting {initial_delay:g}s for the free VNStock quota window", flush=True)
+        time.sleep(initial_delay)
     known = {row["symbol"] for row in stocks}
     failures: list[str] = []
     synced_symbols = 0

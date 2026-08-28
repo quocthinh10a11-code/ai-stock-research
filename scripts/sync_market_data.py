@@ -259,7 +259,7 @@ def main() -> int:
             failures.append(f"{symbol}: {error}")
             print(f"Failed {symbol}: {error}", file=sys.stderr, flush=True)
         if index < len(requested) - 1:
-            time.sleep(float(os.getenv("VNSTOCK_REQUEST_DELAY_SECONDS", "3.2")))
+            time.sleep(float(os.getenv("VNSTOCK_REQUEST_DELAY_SECONDS", "5")))
     if failures:
         print("Market sync completed with failures:\n" + "\n".join(failures), file=sys.stderr)
         return 1

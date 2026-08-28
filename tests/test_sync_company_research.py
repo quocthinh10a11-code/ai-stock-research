@@ -36,7 +36,10 @@ class CompanyListingTests(unittest.TestCase):
         self.assertEqual(rows[0]["exchange"], "HOSE")
         self.assertEqual(rows[1]["exchange"], "UPCOM")
 
-    @patch.dict(os.environ, {"FUNDAMENTAL_SYMBOLS": "FPT"}, clear=False)
+    @patch.dict(os.environ, {
+        "FUNDAMENTAL_SYMBOLS": "FPT",
+        "VNSTOCK_INITIAL_DELAY_SECONDS": "0",
+    }, clear=False)
     @patch("scripts.sync_company_research.sync_fundamentals", return_value=(1, "KBS"))
     @patch("scripts.sync_company_research.Listing")
     @patch("scripts.sync_company_research.SupabaseRest")
@@ -63,6 +66,7 @@ class CompanyListingTests(unittest.TestCase):
         mocked_sync_fundamentals.assert_called_once_with(client, "FPT", ["KBS", "VCI"])
         client.upsert.assert_called_once()
 
+    @patch.dict(os.environ, {"VNSTOCK_FINANCE_REQUEST_DELAY_SECONDS": "0"}, clear=False)
     @patch("scripts.sync_company_research.report_values")
     @patch("scripts.sync_company_research.Finance")
     def test_fundamentals_fall_back_when_primary_provider_is_empty(
