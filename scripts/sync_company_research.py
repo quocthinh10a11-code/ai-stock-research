@@ -29,10 +29,13 @@ def listing_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
     company_column = pick_column(frame, ("organ_name", "company_name", "name", "organname"))
     exchange_column = pick_column(frame, ("exchange", "comgroupcode", "exchange_code"))
     industry_column = pick_column(frame, ("icb_name3", "industry", "sector", "icb_name2"))
+    type_column = pick_column(frame, ("type", "instrument_type", "security_type"))
     if not symbol_column or not exchange_column:
         raise RuntimeError(f"VNStock listing response changed; columns={list(frame.columns)}")
     rows: list[dict[str, Any]] = []
     for record in frame.to_dict("records"):
+        if type_column and str(record.get(type_column, "")).strip().lower() != "stock":
+            continue
         symbol = str(record.get(symbol_column, "")).strip().upper()
         exchange = str(record.get(exchange_column, "")).strip().upper().replace("HSX", "HOSE")
         if not re.fullmatch(r"[A-Z0-9]{2,10}", symbol) or exchange not in EXCHANGES:
@@ -131,7 +134,7 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, source: str) -> int:
 def main() -> int:
     client = SupabaseRest()
     source = os.getenv("VNSTOCK_SOURCE", "KBS")
-    listing = Listing(source=source).all_symbols()
+    listing = Listing(source=source).symbols_by_exchange()
     stocks = listing_rows(listing)
     for index in range(0, len(stocks), 250):
         client.upsert("stocks", stocks[index:index + 250], "symbol")
