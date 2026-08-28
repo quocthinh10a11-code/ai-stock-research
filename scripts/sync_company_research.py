@@ -103,38 +103,54 @@ def report_values(frame: pd.DataFrame) -> tuple[list[str], dict[str, dict[str, f
     return periods, values, unit
 
 
-def sync_fundamentals(client: SupabaseRest, symbol: str, source: str) -> int:
-    finance = Finance(symbol=symbol, source=source)
-    income = finance.income_statement(period="quarter")
-    balance = finance.balance_sheet(period="quarter")
-    cash_flow = finance.cash_flow(period="quarter")
-    period_order: list[str] = []
-    combined: dict[str, dict[str, float | None]] = {}
-    unit = "reported unit"
-    for frame in (income, balance, cash_flow):
-        periods, values, frame_unit = report_values(frame)
-        unit = frame_unit if unit == "reported unit" else unit
-        for period in periods:
-            if period not in period_order:
-                period_order.append(period)
-            combined.setdefault(period, {}).update(values[period])
-    rows = [{
-        "symbol": symbol,
-        "period_type": "quarter",
-        "period_label": period,
-        "period_end": period_end_date(period),
-        "unit": unit,
-        "source": f"vnstock-community/{source.lower()}",
-        **combined[period],
-    } for period in period_order[:8]]
-    client.upsert("financial_periods", rows, "symbol,period_type,period_label")
-    return len(rows)
+def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> tuple[int, str]:
+    errors: list[str] = []
+    for source in sources:
+        try:
+            finance = Finance(symbol=symbol, source=source)
+            frames = (
+                finance.income_statement(period="quarter"),
+                finance.balance_sheet(period="quarter"),
+                finance.cash_flow(period="quarter"),
+            )
+            if any(frame.empty for frame in frames):
+                raise RuntimeError("provider returned an empty financial report")
+            period_order: list[str] = []
+            combined: dict[str, dict[str, float | None]] = {}
+            unit = "reported unit"
+            for frame in frames:
+                periods, values, frame_unit = report_values(frame)
+                unit = frame_unit if unit == "reported unit" else unit
+                for period in periods:
+                    if period not in period_order:
+                        period_order.append(period)
+                    combined.setdefault(period, {}).update(values[period])
+            rows = [{
+                "symbol": symbol,
+                "period_type": "quarter",
+                "period_label": period,
+                "period_end": period_end_date(period),
+                "unit": unit,
+                "source": f"vnstock-community/{source.lower()}",
+                **combined[period],
+            } for period in period_order[:8]]
+            if not rows:
+                raise RuntimeError("provider returned no financial periods")
+            client.upsert("financial_periods", rows, "symbol,period_type,period_label")
+            return len(rows), source
+        except Exception as error:
+            errors.append(f"{source}: {error}")
+    raise RuntimeError("; ".join(errors))
 
 
 def main() -> int:
     client = SupabaseRest()
-    source = os.getenv("VNSTOCK_SOURCE", "KBS")
-    listing = Listing(source=source).symbols_by_exchange()
+    listing_source = os.getenv("VNSTOCK_LISTING_SOURCE", os.getenv("VNSTOCK_SOURCE", "KBS"))
+    configured_sources = os.getenv("VNSTOCK_FINANCE_SOURCES", f"{listing_source},VCI")
+    finance_sources = list(dict.fromkeys(
+        item.strip().upper() for item in configured_sources.split(",") if item.strip()
+    ))
+    listing = Listing(source=listing_source).symbols_by_exchange()
     stocks = listing_rows(listing)
     for index in range(0, len(stocks), 250):
         client.upsert("stocks", stocks[index:index + 250], "symbol")
@@ -143,18 +159,20 @@ def main() -> int:
     requested = [item.strip().upper() for item in requested_value.split(",") if item.strip()]
     known = {row["symbol"] for row in stocks}
     failures: list[str] = []
+    synced_symbols = 0
     for symbol in requested:
         if symbol not in known:
             failures.append(f"{symbol}: not listed on HOSE, HNX or UPCOM")
             continue
         try:
-            count = sync_fundamentals(client, symbol, source)
-            print(f"Synced fundamentals {symbol}: {count} quarters", flush=True)
+            count, used_source = sync_fundamentals(client, symbol, finance_sources)
+            synced_symbols += 1
+            print(f"Synced fundamentals {symbol}: {count} quarters via {used_source}", flush=True)
         except Exception as error:
             failures.append(f"{symbol}: {error}")
     if failures:
         print("Fundamental sync warnings:\n" + "\n".join(failures), flush=True)
-    return 0
+    return 1 if requested and synced_symbols == 0 else 0
 
 
 if __name__ == "__main__":
