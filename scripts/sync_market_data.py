@@ -21,6 +21,7 @@ from urllib.request import Request, urlopen
 
 import pandas as pd
 from vnstock import Listing, Market
+from vnstock.core import setup_api_key
 
 
 STOCKS: dict[str, tuple[str, str, str]] = {
@@ -46,6 +47,12 @@ def required_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value.rstrip("/")
+
+
+def configure_vnstock_api() -> None:
+    api_key = os.getenv("VNSTOCK_API_KEY", "").strip()
+    if api_key:
+        setup_api_key(api_key)
 
 
 def finite(value: Any) -> float:
@@ -97,6 +104,19 @@ class SupabaseRest:
                 last_error = error
             print(f"Retrying Supabase {table} upsert after attempt {attempt}: {last_error}", file=sys.stderr, flush=True)
             time.sleep(retry_delay * (2 ** (attempt - 1)))
+
+    def select(self, table: str, columns: str = "*", **filters: str) -> list[dict[str, Any]]:
+        query = urlencode({"select": columns, **filters})
+        request = Request(
+            f"{self.url}/rest/v1/{table}?{query}",
+            method="GET",
+            headers={"apikey": self.key, "Authorization": f"Bearer {self.key}"},
+        )
+        with urlopen(request, timeout=60) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        if not isinstance(result, list):
+            raise RuntimeError(f"Supabase returned an invalid response for {table}")
+        return result
 
     def recent_research_symbols(self, limit: int = 20) -> list[str]:
         query = urlencode({"select": "symbol", "order": "viewed_at.desc", "limit": str(limit * 4)})
@@ -276,6 +296,7 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
 
 
 def main() -> int:
+    configure_vnstock_api()
     client = SupabaseRest()
     end_date = date.today()
     start_date = end_date - timedelta(days=int(os.getenv("MARKET_LOOKBACK_DAYS", "240")))

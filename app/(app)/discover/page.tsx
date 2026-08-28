@@ -10,7 +10,7 @@ export default async function DiscoverPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-navy">Khám phá cổ phiếu</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Top 5 cổ phiếu theo từng ngành, xếp hạng từ tín hiệu EMA và dữ liệu OHLCV đã đồng bộ.
+          Top 5 đáng quan tâm trong 10 nhóm ngành, dựa trên thanh khoản, tăng trưởng, hiệu quả, định giá và tiêu chí riêng từng ngành.
         </p>
       </div>
       <DiscoverClient items={rankings} initialWatchlist={watchlist} />

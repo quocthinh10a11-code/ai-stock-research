@@ -6,7 +6,7 @@ export type WebResearchSource = {
   source: string;
 };
 
-type TavilySearchResult =
+export type TavilySearchResult =
   | { ok: true; results: WebResearchSource[] }
   | { ok: false; status: number | null; message: string; detail: string };
 
@@ -68,6 +68,73 @@ export async function searchFinancialWeb({
       ok: false,
       status: null,
       message: "Realtime web search timed out. Please retry.",
+      detail: caught instanceof Error ? caught.message : String(caught),
+    };
+  }
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 1_000);
+    return { ok: false, status: response.status, message: errorMessage(response.status), detail };
+  }
+
+  let body: { results?: Array<{ title?: unknown; url?: unknown; content?: unknown; published_date?: unknown }> };
+  try {
+    body = await response.json();
+  } catch {
+    return { ok: false, status: 502, message: "Tavily returned an invalid response.", detail: "Invalid JSON" };
+  }
+
+  const results = (body.results ?? []).flatMap((item) => {
+    const url = String(item.url ?? "");
+    if (!isPublicWebUrl(url)) return [];
+    return [{
+      title: String(item.title ?? new URL(url).hostname).slice(0, 300),
+      url,
+      content: String(item.content ?? "").slice(0, 700),
+      publishedAt: item.published_date ? String(item.published_date) : null,
+      source: new URL(url).hostname.replace(/^www\./, ""),
+    }];
+  });
+  return { ok: true, results };
+}
+
+export async function searchSectorWeb({
+  apiKey,
+  sector,
+  symbols,
+  fetchImpl = fetch,
+}: {
+  apiKey: string;
+  sector: string;
+  symbols: string[];
+  fetchImpl?: typeof fetch;
+}): Promise<TavilySearchResult> {
+  let response: Response;
+  try {
+    response = await fetchImpl("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `Thị trường chứng khoán Việt Nam ngành "${sector}" ${symbols.join(" ")} tin tức kết quả kinh doanh triển vọng rủi ro mới nhất`,
+        search_depth: "basic",
+        chunks_per_source: 1,
+        max_results: 6,
+        topic: "news",
+        time_range: "month",
+        include_answer: false,
+        include_raw_content: false,
+        include_images: false,
+        include_usage: true,
+        auto_parameters: false,
+        safe_search: true,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (caught) {
+    return {
+      ok: false,
+      status: null,
+      message: "Tìm kiếm tin ngành bị quá thời gian. Hãy thử lại.",
       detail: caught instanceof Error ? caught.message : String(caught),
     };
   }

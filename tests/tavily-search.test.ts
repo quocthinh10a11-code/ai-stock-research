@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { searchFinancialWeb } from "../lib/tavily-search.ts";
+import { searchFinancialWeb, searchSectorWeb } from "../lib/tavily-search.ts";
 
 test("normalizes Vietnamese exchange-aware Tavily results", async () => {
   const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
@@ -32,4 +32,24 @@ test("classifies exhausted Tavily free quota", async () => {
   const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "FPT", company: "FPT Corporation", exchange: "HOSE", fetchImpl });
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.message, /quota/i);
+});
+
+test("searches fresh sector news for the screened symbols", async () => {
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const request = JSON.parse(String(init?.body));
+    assert.equal(request.topic, "news");
+    assert.equal(request.time_range, "month");
+    assert.match(request.query, /Công nghệ thông tin/);
+    assert.match(request.query, /FPT CMG/);
+    return Response.json({ results: [{
+      title: "Tin ngành công nghệ",
+      url: "https://example.com/cong-nghe",
+      content: "Thông tin mới.",
+      published_date: "2026-08-28",
+    }] });
+  }) as typeof fetch;
+
+  const result = await searchSectorWeb({ apiKey: "tvly-test", sector: "Công nghệ thông tin", symbols: ["FPT", "CMG"], fetchImpl });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.results[0].publishedAt, "2026-08-28");
 });

@@ -8,7 +8,9 @@ export interface InvestmentMetric { name: string; value: string | null; trend: s
 export interface InvestmentDecisionRow { group: "business_performance" | "valuation" | "financial_health" | "risk_momentum"; title: string; metrics: InvestmentMetric[]; analysis: string; action: InvestmentAction; confidence: "low" | "medium" | "high"; rationale: string; }
 export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
 export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; }
-export interface RankingItem { rank: number; symbol: string; company: string; sector: string; price: number; change: number; score: number; rating: "Strong Buy" | "Buy" | "Neutral" | "Sell"; rsi14?: number; relativeVolume?: number; trend?: "Bullish" | "Bearish" | "Flat"; }
+export interface ScreenerCriterion { key: string; label: string; value: string | number | null; target: string; passed: boolean | null; }
+export interface RankingItem { rank: number; symbol: string; company: string; sector: string; industry?: string; exchange?: "HOSE" | "HNX" | "UPCOM"; price: number; change: number; score: number; rating: "Strong Buy" | "Buy" | "Neutral" | "Sell"; marketCap?: number; averageVolume20?: number; pe?: number; roe?: number; revenueGrowth?: number; profitGrowth?: number; debtToEquity?: number; passedCriteria?: number; availableCriteria?: number; eligible?: boolean; screenedAt?: string; criteria?: ScreenerCriterion[]; rsi14?: number; relativeVolume?: number; trend?: "Bullish" | "Bearish" | "Flat"; }
+export interface SectorAiBrief { sector: string; symbols: string[]; summary: string; highlights: string[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
 
 export type ISODate = string;
 export type ISOTimestamp = string;
@@ -22,6 +24,9 @@ export interface StockRow {
   sector: string;
   exchange: "HOSE" | "HNX" | "UPCOM";
   updated_at: ISOTimestamp;
+  icb_level2_code?: string | null;
+  icb_level2_name?: string | null;
+  sector_group?: string | null;
 }
 
 export interface PriceHistoryRow {

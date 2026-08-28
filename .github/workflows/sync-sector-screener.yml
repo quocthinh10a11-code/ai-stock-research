@@ -1,0 +1,40 @@
+name: Sync sector screener
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full refresh or intraday prices only"
+        required: true
+        type: choice
+        options:
+          - full
+          - intraday
+        default: full
+  schedule:
+    - cron: "0 11 * * 1-5"
+    - cron: "*/30 2-8 * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+      SCREENER_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 11 * * 1-5' && 'full' || 'intraday') }}
+      SCREENER_REQUEST_DELAY_SECONDS: "1.2"
+      SCREENER_BOARD_DELAY_SECONDS: "1.2"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-market-data.txt
+      - run: pip install -r requirements-market-data.txt
+      - run: python scripts/sync_sector_screener.py

@@ -1,0 +1,12 @@
+[
+  {"name":"Tài chính","codes":["8300","8500","8600","8700"],"industries":["Ngân hàng","Bảo hiểm","Bất động sản","Dịch vụ tài chính"]},
+  {"name":"Bất động sản & Xây dựng","codes":["2300"],"industries":["Xây dựng và Vật liệu"]},
+  {"name":"Dầu khí & Năng lượng","codes":["0500"],"industries":["Dầu khí"]},
+  {"name":"Vật liệu cơ bản","codes":["1300","1700"],"industries":["Hóa chất","Tài nguyên Cơ bản"]},
+  {"name":"Công nghiệp","codes":["2700","3300"],"industries":["Hàng & Dịch vụ Công nghiệp","Ô tô và phụ tùng"]},
+  {"name":"Hàng tiêu dùng","codes":["3500","3700"],"industries":["Thực phẩm và đồ uống","Hàng cá nhân & Gia dụng"]},
+  {"name":"Dịch vụ tiêu dùng","codes":["5300","5500","5700"],"industries":["Bán lẻ","Truyền thông","Du lịch và Giải trí"]},
+  {"name":"Y tế & Dược phẩm","codes":["4500"],"industries":["Y tế"]},
+  {"name":"Công nghệ thông tin","codes":["6500","9500"],"industries":["Viễn thông","Công nghệ Thông tin"]},
+  {"name":"Tiện ích công cộng","codes":["7500"],"industries":["Điện, nước & xăng dầu khí đốt"]}
+]

@@ -1,4 +1,5 @@
 import type { RankingItem } from "@/types/stock";
+import { sectorNames } from "../sector-taxonomy.ts";
 
 export interface SectorRankingGroup {
   sector: string;
@@ -6,7 +7,7 @@ export interface SectorRankingGroup {
 }
 
 function compareRankings(a: RankingItem, b: RankingItem) {
-  return b.score - a.score || b.change - a.change || a.symbol.localeCompare(b.symbol);
+  return Number(b.eligible) - Number(a.eligible) || b.score - a.score || b.change - a.change || a.symbol.localeCompare(b.symbol);
 }
 
 export function groupTopFiveBySector(items: RankingItem[]): SectorRankingGroup[] {
@@ -21,6 +22,9 @@ export function groupTopFiveBySector(items: RankingItem[]): SectorRankingGroup[]
     .sort(([a], [b]) => {
       if (a === "Chưa phân loại") return 1;
       if (b === "Chưa phân loại") return -1;
+      const aIndex = sectorNames.indexOf(a);
+      const bIndex = sectorNames.indexOf(b);
+      if (aIndex >= 0 || bIndex >= 0) return (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex);
       return a.localeCompare(b, "vi");
     })
     .map(([sector, sectorItems]) => ({

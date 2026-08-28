@@ -12,9 +12,9 @@ import pandas as pd
 from vnstock import Finance, Listing
 
 try:
-    from .sync_market_data import SupabaseRest, STOCKS
+    from .sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api
 except ImportError:  # Support `python scripts/sync_company_research.py`.
-    from sync_market_data import SupabaseRest, STOCKS
+    from sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api
 
 
 EXCHANGES = {"HOSE", "HNX", "UPCOM"}
@@ -169,6 +169,7 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
 
 
 def main() -> int:
+    configure_vnstock_api()
     client = SupabaseRest()
     listing_source = os.getenv("VNSTOCK_LISTING_SOURCE", os.getenv("VNSTOCK_SOURCE", "KBS"))
     configured_sources = os.getenv("VNSTOCK_FINANCE_SOURCES", f"{listing_source},VCI")
