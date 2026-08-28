@@ -4,19 +4,19 @@
 
 :root { color-scheme: light; }
 * { border-color: #e2e8f0; }
-html { background: #f8f9ff; }
-body { margin: 0; color: #0d1c2d; background: #f8f9ff; font-feature-settings: "tnum" 1; }
+html { background: #f8fafc; }
+body { margin: 0; color: #0f172a; background: #f8fafc; font-feature-settings: "tnum" 1; }
 ::selection { background: #cbd5e1; color: #0f172a; }
 *:focus-visible { outline: 2px solid #0f172a; outline-offset: 2px; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border: 3px solid #f8f9ff; border-radius: 999px; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border: 3px solid #f8fafc; border-radius: 999px; }
 
 @layer components {
-  .panel { @apply border border-slate-200 bg-white; }
+  .panel { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
   .panel-header { @apply flex items-center justify-between border-b border-slate-200 px-5 py-4; }
   .label { @apply font-display text-xs font-semibold uppercase tracking-[0.05em] text-slate-500; }
   .data { @apply font-mono text-data; }
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded bg-navy px-4 py-2.5 font-display text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded border border-slate-200 bg-white px-4 py-2.5 font-display text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50; }
   .table-row { @apply border-b border-slate-100 transition-colors hover:bg-slate-50; }
 }

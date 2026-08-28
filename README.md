@@ -1,6 +1,6 @@
 # AI Stock Research
 
-Next.js 15 research workspace for Vietnamese equities on HOSE, HNX and UPCOM, converted from the supplied Stitch designs.
+Next.js 15 research workspace for Vietnamese equities on HOSE, HNX and UPCOM.
 
 ## Local setup
 
@@ -40,11 +40,12 @@ AI_DAILY_REQUEST_LIMIT=30
 
 ## Routes
 
-- `/` public market landing page
+- `/` redirects authenticated users to `/home` and other users to `/login`
 - `/login` Supabase email/password and Google OAuth login
+- `/home` authenticated ticker search and synchronized stocks
 - `/analysis/[symbol]` authenticated stock research result
-- `/overview`, `/discover`, `/technical`, `/sentiment`, `/portfolio` authenticated workspace
+- `/discover` authenticated synchronized ranking and watchlist
 
-Stock search, OHLCV, technical evidence and company fundamentals read from Supabase. Tavily performs realtime finance search and Gemini 3.6 synthesizes its source excerpts without consuming Google Search grounding quota. The legacy Gemini 2.5 grounded-search path remains available when Tavily is not configured. Dashboard-only areas such as market-wide sentiment and model-portfolio yields remain clearly labeled mock or rule-based data.
+Stock search, OHLCV, technical evidence and company fundamentals read from Supabase. Tavily performs exchange-aware Vietnamese web search and Gemini 3.6 synthesizes cited source excerpts into a four-group indicator-to-decision matrix. Missing metrics remain explicitly unavailable. The scheduled job refreshes the default universe plus recently researched symbols, so HOSE, HNX and UPCOM searches do not require a workflow run per request.
 
 See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets.
