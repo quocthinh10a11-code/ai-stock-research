@@ -26,7 +26,9 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
 SUPABASE_SECRET_KEY=sb_secret_your-key
 GEMINI_API_KEY=your-google-ai-studio-key
 GEMINI_MODEL=gemini-2.5-flash-lite
-AI_DAILY_REQUEST_LIMIT=450
+GEMINI_SYNTHESIS_MODEL=gemini-3.6-flash
+TAVILY_API_KEY=your-free-tavily-key
+AI_DAILY_REQUEST_LIMIT=30
 ```
 
 ## Supabase setup
@@ -43,6 +45,6 @@ AI_DAILY_REQUEST_LIMIT=450
 - `/analysis/[symbol]` authenticated stock research result
 - `/overview`, `/discover`, `/technical`, `/sentiment`, `/portfolio` authenticated workspace
 
-Stock search, OHLCV, technical evidence and company fundamentals read from Supabase. A server-side Gemini request adds current web-grounded insight with source links and a short cache. Dashboard-only areas such as market-wide sentiment and model-portfolio yields remain clearly labeled mock or rule-based data.
+Stock search, OHLCV, technical evidence and company fundamentals read from Supabase. Tavily performs realtime finance search and Gemini 3.6 synthesizes its source excerpts without consuming Google Search grounding quota. The legacy Gemini 2.5 grounded-search path remains available when Tavily is not configured. Dashboard-only areas such as market-wide sentiment and model-portfolio yields remain clearly labeled mock or rule-based data.
 
 See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets.

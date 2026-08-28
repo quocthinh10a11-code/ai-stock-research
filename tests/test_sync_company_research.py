@@ -4,10 +4,24 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from scripts.sync_company_research import listing_rows, main, sync_fundamentals
+from scripts.sync_company_research import all_exchange_listings, listing_rows, main, sync_fundamentals
 
 
 class CompanyListingTests(unittest.TestCase):
+    def test_combines_exchange_payloads_when_provider_omits_exchange_column(self):
+        listing = MagicMock()
+        listing.symbols_by_exchange.side_effect = [
+            pd.DataFrame([{"symbol": "FPT", "organ_name": "FPT Corporation"}]),
+            pd.DataFrame([{"symbol": "ACB", "organ_name": "Asia Commercial Bank"}]),
+            pd.DataFrame([{"symbol": "VGI", "organ_name": "Viettel Global"}]),
+        ]
+
+        rows = listing_rows(all_exchange_listings(listing))
+
+        self.assertEqual([(row["symbol"], row["exchange"]) for row in rows], [
+            ("FPT", "HOSE"), ("ACB", "HNX"), ("VGI", "UPCOM"),
+        ])
+
     def test_accepts_kbs_exchange_payload_and_filters_non_stocks(self):
         frame = pd.DataFrame([
             {
@@ -54,15 +68,14 @@ class CompanyListingTests(unittest.TestCase):
                 "type": "stock",
             }
         ])
-        mocked_listing.return_value.symbols_by_exchange.return_value = frame
+        mocked_listing.return_value.symbols_by_exchange.side_effect = [frame, pd.DataFrame(), pd.DataFrame()]
         client = MagicMock()
         mocked_rest.return_value = client
 
         result = main()
 
         self.assertEqual(result, 0)
-        mocked_listing.return_value.symbols_by_exchange.assert_called_once_with()
-        mocked_listing.return_value.all_symbols.assert_not_called()
+        self.assertEqual(mocked_listing.return_value.symbols_by_exchange.call_count, 3)
         mocked_sync_fundamentals.assert_called_once_with(client, "FPT", ["KBS", "VCI"])
         client.upsert.assert_called_once()
 

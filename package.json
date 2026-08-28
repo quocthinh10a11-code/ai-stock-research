@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:gemini": "node --experimental-strip-types --test tests/gemini-provider.test.ts",
+    "test:gemini": "node --experimental-strip-types --test tests/gemini-provider.test.ts tests/tavily-search.test.ts",
     "sync:market": "python scripts/sync_market_data.py",
     "sync:companies": "python scripts/sync_company_research.py"
   },

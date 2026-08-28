@@ -18,6 +18,7 @@ except ImportError:  # Support `python scripts/sync_company_research.py`.
 
 
 EXCHANGES = {"HOSE", "HNX", "UPCOM"}
+EXCHANGE_ORDER = ("HOSE", "HNX", "UPCOM")
 
 
 def pick_column(frame: pd.DataFrame, candidates: tuple[str, ...]) -> str | None:
@@ -49,6 +50,23 @@ def listing_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
             "updated_at": f"{date.today().isoformat()}T00:00:00Z",
         })
     return rows
+
+
+def all_exchange_listings(listing: Listing) -> pd.DataFrame:
+    """Fetch each exchange explicitly because some VNStock sources omit exchange in the combined payload."""
+    frames: list[pd.DataFrame] = []
+    for exchange in EXCHANGE_ORDER:
+        frame = listing.symbols_by_exchange(exchange=exchange).copy()
+        if frame.empty:
+            continue
+        if not pick_column(frame, ("exchange", "comgroupcode", "exchange_code")):
+            frame["exchange"] = exchange
+        frames.append(frame)
+    if not frames:
+        raise RuntimeError("VNStock returned no listings for HOSE, HNX or UPCOM")
+    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=[
+        pick_column(frames[0], ("symbol", "ticker", "code")) or "symbol"
+    ])
 
 
 ALIASES = {
@@ -157,7 +175,7 @@ def main() -> int:
     finance_sources = list(dict.fromkeys(
         item.strip().upper() for item in configured_sources.split(",") if item.strip()
     ))
-    listing = Listing(source=listing_source).symbols_by_exchange()
+    listing = all_exchange_listings(Listing(source=listing_source))
     stocks = listing_rows(listing)
     for index in range(0, len(stocks), 250):
         client.upsert("stocks", stocks[index:index + 250], "symbol")

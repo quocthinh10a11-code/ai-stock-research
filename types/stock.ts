@@ -1,7 +1,7 @@
 export interface EvidenceItem { label: string; value: string; detail: string; tone?: "positive" | "negative" | "neutral"; }
 export interface FinancialPeriod { period: string; periodEnd: ISODate; revenue: number | null; grossProfit: number | null; operatingProfit: number | null; profitBeforeTax: number | null; netProfit: number | null; eps: number | null; unit: string; }
 export interface RelatedStock { symbol: string; company: string; exchange: string; price: number | null; change: number | null; }
-export interface ResearchCitation { title: string; url: string; source?: string; }
+export interface ResearchCitation { title: string; url: string; source?: string; publishedAt?: string | null; insight?: string; sentiment?: "positive" | "negative" | "neutral"; }
 export interface TrendForecast { horizon: "1M" | "3M" | "6M"; direction: MarketBias; bullishProbability: number; neutralProbability: number; bearishProbability: number; rationale: string; }
 export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
 export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; }

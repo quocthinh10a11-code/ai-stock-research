@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configuredGeminiModels, requestGroundedGemini } from "../lib/gemini-provider.ts";
+import { configuredGeminiModels, requestGroundedGemini, requestSynthesisGemini } from "../lib/gemini-provider.ts";
 
 test("uses free grounded 2.5 models by default", () => {
   assert.deepEqual(configuredGeminiModels({ NODE_ENV: "test" }), ["gemini-2.5-flash-lite", "gemini-2.5-flash"]);
@@ -53,4 +53,16 @@ test("identifies an invalid API key", async () => {
   const result = await requestGroundedGemini({ apiKey: "bad-key", prompt: "test", fetchImpl });
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.error.message, /GEMINI_API_KEY/);
+});
+
+test("uses Gemini 3.6 for free synthesis without the Google Search tool", async () => {
+  let requestBody: Record<string, unknown> = {};
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    requestBody = JSON.parse(String(init?.body));
+    return Response.json({ candidates: [] });
+  }) as typeof fetch;
+  const result = await requestSynthesisGemini({ apiKey: "test-key", prompt: "source snippets", fetchImpl });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.model, "gemini-3.6-flash");
+  assert.equal("tools" in requestBody, false);
 });

@@ -149,7 +149,19 @@ def extend_stock_metadata(symbols: list[str]) -> None:
     unknown = [symbol for symbol in symbols if symbol not in STOCKS]
     if not unknown:
         return
-    frame = Listing(source=os.getenv("VNSTOCK_SOURCE", "KBS")).all_symbols()
+    listing = Listing(source=os.getenv("VNSTOCK_SOURCE", "KBS"))
+    frames: list[pd.DataFrame] = []
+    for exchange in ("HOSE", "HNX", "UPCOM"):
+        exchange_frame = listing.symbols_by_exchange(exchange=exchange).copy()
+        if exchange_frame.empty:
+            continue
+        lowered_exchange = {str(column).lower() for column in exchange_frame.columns}
+        if not {"exchange", "comgroupcode", "exchange_code"}.intersection(lowered_exchange):
+            exchange_frame["exchange"] = exchange
+        frames.append(exchange_frame)
+    if not frames:
+        raise RuntimeError("VNStock returned no listings for HOSE, HNX or UPCOM")
+    frame = pd.concat(frames, ignore_index=True)
     lowered = {str(column).lower(): str(column) for column in frame.columns}
     symbol_column = next((lowered[name] for name in ("symbol", "ticker", "code") if name in lowered), None)
     company_column = next((lowered[name] for name in ("organ_name", "company_name", "name", "organname") if name in lowered), None)

@@ -11,6 +11,10 @@ type GroundedGeminiResult =
   | { ok: true; model: string; response: Response }
   | { ok: false; attemptedModels: string[]; error: ProviderError };
 
+type SynthesisGeminiResult =
+  | { ok: true; model: string; response: Response }
+  | { ok: false; error: ProviderError };
+
 function uniqueModels(models: string[]) {
   return [...new Set(models.map((model) => model.trim()).filter(Boolean))];
 }
@@ -127,4 +131,39 @@ export async function requestGroundedGemini({
     attemptedModels: candidates,
     error: providerMessage(404, "All configured models were unavailable"),
   };
+}
+
+export async function requestSynthesisGemini({
+  apiKey,
+  prompt,
+  model = process.env.GEMINI_SYNTHESIS_MODEL ?? "gemini-3.6-flash",
+  fetchImpl = fetch,
+}: {
+  apiKey: string;
+  prompt: string;
+  model?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<SynthesisGeminiResult> {
+  let response: Response;
+  try {
+    response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.15, responseMimeType: "application/json" },
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+  } catch (caught) {
+    const detail = caught instanceof Error ? caught.message : String(caught);
+    return { ok: false, error: { httpStatus: 502, providerStatus: null, detail, message: "Gemini synthesis timed out. Please retry." } };
+  }
+  if (response.ok) return { ok: true, model, response };
+  const detail = (await response.text()).slice(0, 1_500);
+  if (response.status === 429) return {
+    ok: false,
+    error: { httpStatus: 429, providerStatus: 429, detail, message: "Gemini's free text-generation quota is exhausted. Retry after the quota resets." },
+  };
+  return { ok: false, error: providerMessage(response.status, detail) };
 }
