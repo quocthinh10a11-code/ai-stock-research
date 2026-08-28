@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAnalysis } from "@/lib/data/get-analysis";
+import { requestGroundedGemini } from "@/lib/gemini-provider";
 import { normalizeStockSymbol } from "@/lib/market-universe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -73,27 +74,19 @@ export async function POST(_: Request, context: { params: Promise<{ symbol: stri
     return NextResponse.json({ error: "The live research quota could not be verified. Please retry." }, { status: 503 });
   }
   if (!reserved) return NextResponse.json({ error: "The free daily AI research budget has been reached. Try again tomorrow." }, { status: 429 });
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite";
   const financialContext = analysis.financials.map((period) => ({ period: period.period, revenue: period.revenue, grossProfit: period.grossProfit, netProfit: period.netProfit, eps: period.eps, unit: period.unit }));
   const asOf = new Date().toISOString();
   const prompt = `You are a cautious Vietnamese equity research assistant. Research ${analysis.symbol} (${analysis.company}, ${analysis.exchange}, sector ${analysis.sector}) using current web sources as of ${asOf}. Prefer exchange filings, company investor-relations pages, audited reports, and reputable Vietnamese financial news. Never invent a number. Distinguish facts from scenarios. This is not investment advice.\n\nStructured data already available: ${JSON.stringify({ price: analysis.price, changePct: analysis.change, technicalEvidence: analysis.evidence, quarterlyFinancials: financialContext })}\n\nReturn ONLY valid JSON with this shape: {"summary":"3-5 factual sentences","outlook":"balanced forward-looking synthesis","catalysts":["..."],"risks":["..."],"forecasts":[{"horizon":"1M","direction":"bullish|neutral|bearish","bullishProbability":0,"neutralProbability":0,"bearishProbability":0,"rationale":"..."},{"horizon":"3M",...},{"horizon":"6M",...}]}. Probabilities in each horizon must sum to 100. Forecasts are scenarios based on evidence, not promises or price targets.`;
-  let response: Response;
-  try {
-    response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2 } }),
-      signal: AbortSignal.timeout(55_000),
+  const provider = await requestGroundedGemini({ apiKey, prompt });
+  if (!provider.ok) {
+    console.error("Gemini research failed", {
+      attemptedModels: provider.attemptedModels,
+      providerStatus: provider.error.providerStatus,
+      detail: provider.error.detail.slice(0, 500),
     });
-  } catch (error) {
-    console.error("Gemini research request failed", error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: "Live research timed out or could not reach the provider. Please retry." }, { status: 502 });
+    return NextResponse.json({ error: provider.error.message }, { status: provider.error.httpStatus });
   }
-  if (!response.ok) {
-    const detail = await response.text();
-    console.error("Gemini research failed", response.status, detail.slice(0, 500));
-    return NextResponse.json({ error: "Live research provider is unavailable or has reached its free quota." }, { status: 502 });
-  }
+  const { model, response } = provider;
   let body: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }> };
   try { body = await response.json(); }
   catch { return NextResponse.json({ error: "Live research returned an invalid provider response. Please retry." }, { status: 502 }); }
