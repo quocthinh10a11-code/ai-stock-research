@@ -1,9 +1,140 @@
 "use client";
-import { useState } from "react";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { DisclaimerCard } from "./DisclaimerCard";
 import { RatingBadge } from "./RatingBadge";
-import type { RankingItem } from "@/types/stock";
-import { cn, formatVnd } from "@/lib/utils";
 import { WatchlistButton } from "./WatchlistButton";
-export function DiscoverClient({items,initialWatchlist=[]}:{items:RankingItem[];initialWatchlist?:string[]}) { const sectors=["Tất cả",...Array.from(new Set(items.map((item)=>item.sector))).sort()]; const [active,setActive]=useState("Tất cả"); const visible=active==="Tất cả"?items:items.filter(i=>i.sector===active); return <><div className="flex gap-2 overflow-x-auto pb-2" aria-label="Lọc cổ phiếu theo ngành">{sectors.map(s=><button key={s} onClick={()=>setActive(s)} aria-pressed={active===s} className={cn("shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold",active===s?"border-navy bg-navy text-white":"border-slate-300 bg-white text-slate-700 hover:bg-slate-50")}>{s}</button>)}</div><section className="panel mt-4 overflow-hidden"><div className="panel-header"><div><h2 className="font-bold text-navy">Danh sách đồng bộ</h2><p className="mt-1 text-xs text-slate-500">Xếp hạng rule-based từ EMA và dữ liệu OHLCV</p></div><span className="text-xs font-semibold text-slate-500">{visible.length} mã</span></div><div className="overflow-x-auto"><table className="w-full min-w-[860px] text-left"><thead className="border-b border-slate-200 bg-slate-50"><tr>{["Hạng","Doanh nghiệp","Ngành","Giá gần nhất","Thay đổi","Điểm","Tín hiệu","Theo dõi"].map(h=><th key={h} className="label px-4 py-3">{h}</th>)}</tr></thead><tbody>{visible.map(i=><tr key={i.symbol} className="table-row"><td className="px-4 py-4 font-mono text-slate-400">{i.rank}</td><td className="px-4"><Link href={`/analysis/${i.symbol}`} className="font-mono text-sm font-bold text-blue-800 hover:underline">{i.symbol}</Link><p className="text-xs text-slate-500">{i.company}</p></td><td className="px-4 text-xs text-slate-600">{i.sector}</td><td className="data px-4 text-right">{formatVnd(i.price)}</td><td className={`data px-4 text-right ${i.change>=0?"text-bull":"text-bear"}`}>{i.change>=0?"+":""}{i.change}%</td><td className="px-4"><div className="flex items-center gap-2"><span className="data font-semibold">{i.score}</span><span className="h-1.5 w-16 bg-slate-100"><span className="block h-full bg-navy" style={{width:`${i.score}%`}}/></span></div></td><td className="px-4"><RatingBadge rating={i.rating}/></td><td className="px-4"><WatchlistButton symbol={i.symbol} initiallySaved={initialWatchlist.includes(i.symbol)}/></td></tr>)}</tbody></table>{visible.length===0&&<div className="p-8 text-center"><p className="text-sm font-semibold text-navy">Không có mã phù hợp</p><button onClick={()=>setActive("Tất cả")} className="mt-3 text-sm font-semibold text-blue-800 underline underline-offset-4">Hiện tất cả</button></div>}</div></section><div className="mt-5"><DisclaimerCard/></div></>; }
+import { groupTopFiveBySector, type SectorRankingGroup } from "@/lib/data/group-sector-rankings";
+import { cn, formatVnd } from "@/lib/utils";
+import type { RankingItem } from "@/types/stock";
+
+const ALL_SECTORS = "Tất cả";
+
+function SectorRankingCard({
+  group,
+  initialWatchlist,
+}: {
+  group: SectorRankingGroup;
+  initialWatchlist: string[];
+}) {
+  return (
+    <section className="panel overflow-hidden" aria-label={`Top cổ phiếu ngành ${group.sector}`}>
+      <div className="panel-header">
+        <div>
+          <p className="label text-blue-800">Xếp hạng ngành</p>
+          <h2 className="mt-1 text-lg font-bold text-navy">
+            {group.sector}
+          </h2>
+        </div>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+          Top {group.items.length}
+        </span>
+      </div>
+
+      <ol className="divide-y divide-slate-200">
+        {group.items.map((item, index) => (
+          <li
+            key={item.symbol}
+            className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto_auto]"
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
+                index === 0 ? "bg-navy text-white" : "bg-slate-100 text-slate-600",
+              )}
+            >
+              {index + 1}
+            </span>
+
+            <div className="min-w-0">
+              <Link
+                href={`/analysis/${item.symbol}`}
+                className="group inline-flex items-center gap-1 font-mono text-sm font-bold text-blue-800 hover:underline"
+              >
+                {item.symbol}
+                <ArrowUpRight
+                  size={13}
+                  className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </Link>
+              <p className="truncate text-xs text-slate-500">{item.company}</p>
+            </div>
+
+            <div className="text-right">
+              <p className="data text-sm font-semibold text-navy">{formatVnd(item.price)}</p>
+              <p className={cn("data text-xs", item.change >= 0 ? "text-bull" : "text-bear")}>
+                {item.change >= 0 ? "+" : ""}{item.change}%
+              </p>
+            </div>
+
+            <div className="col-span-2 col-start-2 flex items-center justify-between gap-3 sm:col-span-1 sm:col-start-auto sm:justify-end">
+              <div className="flex items-center gap-2">
+                <span className="data text-xs font-semibold text-slate-500">{item.score}/100</span>
+                <RatingBadge rating={item.rating} />
+              </div>
+              <WatchlistButton symbol={item.symbol} initiallySaved={initialWatchlist.includes(item.symbol)} />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+export function DiscoverClient({
+  items,
+  initialWatchlist = [],
+}: {
+  items: RankingItem[];
+  initialWatchlist?: string[];
+}) {
+  const groups = useMemo(() => groupTopFiveBySector(items), [items]);
+  const sectors = [ALL_SECTORS, ...groups.map((group) => group.sector)];
+  const [active, setActive] = useState(ALL_SECTORS);
+  const visibleGroups = active === ALL_SECTORS
+    ? groups
+    : groups.filter((group) => group.sector === active);
+
+  return (
+    <>
+      <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Lọc cổ phiếu theo ngành">
+        {sectors.map((sector) => (
+          <button
+            key={sector}
+            type="button"
+            onClick={() => setActive(sector)}
+            aria-pressed={active === sector}
+            className={cn(
+              "shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+              active === sector
+                ? "border-navy bg-navy text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+            )}
+          >
+            {sector}
+          </button>
+        ))}
+      </div>
+
+      {visibleGroups.length > 0 ? (
+        <div className={cn("mt-4 grid gap-5", active === ALL_SECTORS && "xl:grid-cols-2")}>
+          {visibleGroups.map((group) => (
+            <SectorRankingCard key={group.sector} group={group} initialWatchlist={initialWatchlist} />
+          ))}
+        </div>
+      ) : (
+        <div className="panel mt-4 p-10 text-center">
+          <p className="text-sm font-semibold text-navy">Chưa có dữ liệu xếp hạng ngành</p>
+          <p className="mt-1 text-xs text-slate-500">Hãy đồng bộ dữ liệu thị trường rồi thử lại.</p>
+        </div>
+      )}
+
+      <div className="mt-5">
+        <DisclaimerCard />
+      </div>
+    </>
+  );
+}
