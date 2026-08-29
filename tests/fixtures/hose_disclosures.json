@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "list": [
+      {
+        "id": 2493001,
+        "title": "FPT: Công bố kết quả kinh doanh quý 2/2026",
+        "postedDate": 1787900000,
+        "summary": "<p>Công ty Cổ phần FPT công bố kết quả kinh doanh.</p>"
+      },
+      {
+        "id": 2493002,
+        "title": "HPG: Thông báo thay đổi nhân sự",
+        "postedDate": 1787901000,
+        "summary": "Không thuộc mã đang yêu cầu"
+      }
+    ]
+  }
+}

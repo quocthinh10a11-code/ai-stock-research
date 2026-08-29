@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { CompanyFinancialDashboard } from "@/components/features/CompanyFinancialDashboard";
+import { OfficialDisclosurePanel } from "@/components/features/OfficialDisclosurePanel";
 import { ProgressiveMarketSnapshot } from "@/components/features/ProgressiveMarketSnapshot";
 import { RealtimeResearch } from "@/components/features/RealtimeResearch";
 import { ResearchHistoryTracker } from "@/components/features/ResearchHistoryTracker";
@@ -27,6 +28,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ symbo
         <div className="flex w-full flex-col items-end gap-4 sm:w-auto sm:flex-row sm:items-start"><WatchlistButton symbol={item.symbol} initiallySaved={watchlist.includes(item.symbol)}/><ProgressiveMarketSnapshot initial={item.currentMarketSnapshot}/></div>
       </div>
     </header>
+    <div className="mt-5"><OfficialDisclosurePanel symbol={item.symbol} initialItems={item.disclosures} initialFreshness={item.disclosureFreshness}/></div>
     <div className="mt-5"><RealtimeResearch symbol={item.symbol}/></div>
     <div className="mt-5"><CompanyFinancialDashboard periods={item.financials} freshness={item.fundamentalsFreshness}/></div>
     <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_340px]">

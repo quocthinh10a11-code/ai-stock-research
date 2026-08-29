@@ -9,9 +9,11 @@ from datetime import date, timedelta
 from typing import Any
 
 try:
+    from .disclosure_connectors import sync_disclosures
     from .sync_company_research import sync_fundamentals
     from .sync_market_data import SupabaseRest, configure_vnstock_api, sync_symbol
 except ImportError:  # Support `python scripts/process_refresh_jobs.py`.
+    from disclosure_connectors import sync_disclosures
     from sync_company_research import sync_fundamentals
     from sync_market_data import SupabaseRest, configure_vnstock_api, sync_symbol
 
@@ -58,6 +60,10 @@ def execute_job(client: SupabaseRest, job: dict[str, Any]) -> None:
             if item.strip()
         ]
         sync_fundamentals(client, symbol, sources)
+        return
+    if data_type == "disclosures":
+        _, _, exchange = stock_metadata(client, symbol)
+        sync_disclosures(client, symbol, exchange)
         return
     raise RuntimeError(f"No worker is configured for data type: {data_type}")
 

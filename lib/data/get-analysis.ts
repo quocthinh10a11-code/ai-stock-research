@@ -1,7 +1,7 @@
 import { normalizeStockSymbol } from "@/lib/market-universe";
 import { buildFreshness } from "@/lib/freshness";
 import { createPublicDataClient } from "@/lib/supabase/public-data";
-import type { EvidenceItem, FinancialPeriod, RelatedStock, StockAnalysis } from "@/types/stock";
+import type { EvidenceItem, FinancialPeriod, OfficialDisclosure, RelatedStock, StockAnalysis } from "@/types/stock";
 
 const signalLabels: Record<string, string> = {
   sma20: "SMA 20",
@@ -35,6 +35,8 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
   const { data: synthesis } = await supabase.from("agent_analysis").select("summary_text").eq("symbol", normalized).order("analysis_date", { ascending: false }).limit(1).maybeSingle();
   const { data: signals } = await supabase.from("evidence_snapshots").select("signal_name,signal_value,signal_direction,source,date").eq("symbol", normalized).order("date", { ascending: false }).limit(8);
   const { data: financialRows } = await supabase.from("financial_periods").select("period_label,period_end,revenue,gross_profit,operating_profit,profit_before_tax,net_profit,eps,total_assets,total_liabilities,equity,operating_cash_flow,unit,provider_timestamp,fetched_at,expires_at,source_name,source_url,data_quality,last_error,refresh_status").eq("symbol", normalized).eq("period_type", "quarter").not("period_end", "is", null).order("period_end", { ascending: false }).limit(20);
+  const { data: disclosureRows } = await supabase.from("official_disclosures").select("title,excerpt,published_at,source_name,source_url").eq("symbol", normalized).order("published_at", { ascending: false }).limit(5);
+  const { data: disclosureStatus } = await supabase.from("disclosure_sync_status").select("source_name,provider_timestamp,fetched_at,expires_at,data_quality,last_error,refresh_status").eq("symbol", normalized).maybeSingle();
   const { data: relatedRows } = await supabase.from("stocks").select("symbol,company_name,exchange").eq("sector", stock.sector).neq("symbol", normalized).limit(5);
   const relatedSymbols = (relatedRows ?? []).map((row) => row.symbol);
   const { data: relatedSnapshots } = relatedSymbols.length ? await supabase.from("latest_market_snapshots").select("symbol,close,previous_close").in("symbol", relatedSymbols) : { data: [] };
@@ -77,6 +79,13 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
       operatingCashFlow: row.operating_cash_flow == null ? null : Number(row.operating_cash_flow),
       unit: row.unit,
     } satisfies FinancialPeriod)),
+    disclosures: (disclosureRows ?? []).map((row) => ({
+      title: row.title,
+      excerpt: row.excerpt,
+      publishedAt: row.published_at,
+      sourceName: row.source_name,
+      sourceUrl: row.source_url,
+    } satisfies OfficialDisclosure)),
     related: (relatedRows ?? []).map((row) => {
       const market = relatedPrice.get(row.symbol);
       const relatedClose = market?.close == null ? null : Number(market.close);
@@ -136,6 +145,17 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
       dataQuality: latestFinancial?.data_quality ?? "unknown",
       lastError: latestFinancial?.last_error ?? null,
       refreshStatus: latestFinancial?.refresh_status ?? null,
+    }),
+    disclosureFreshness: buildFreshness({
+      kind: "disclosures",
+      providerTimestamp: disclosureStatus?.provider_timestamp ?? null,
+      fetchedAt: disclosureStatus?.fetched_at ?? null,
+      expiresAt: disclosureStatus?.expires_at ?? null,
+      sourceName: disclosureStatus?.source_name ?? (stock.exchange === "HOSE" ? "HOSE Official" : "HNX Official"),
+      sourceUrl: stock.exchange === "HOSE" ? "https://www.hsx.vn/vi/thong-tin-cong-bo" : "https://www.hnx.vn",
+      dataQuality: disclosureStatus?.data_quality ?? "unknown",
+      lastError: disclosureStatus?.last_error ?? null,
+      refreshStatus: disclosureStatus?.refresh_status ?? "idle",
     }),
   };
 }

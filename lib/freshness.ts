@@ -9,6 +9,7 @@ const statusByKind: Record<FreshnessKind, FreshnessStatus> = {
   market: "EOD",
   technical: "EOD",
   fundamentals: "Cached",
+  disclosures: "Delayed",
   sector: "Delayed",
   ai: "Cached",
 };

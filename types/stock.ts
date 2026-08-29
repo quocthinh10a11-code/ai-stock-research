@@ -7,7 +7,7 @@ export type InvestmentAction = "buy" | "accumulate" | "hold" | "reduce" | "sell"
 export interface InvestmentMetric { name: string; value: string | null; trend: string | null; sourceIndices: number[]; }
 export interface InvestmentDecisionRow { group: "business_performance" | "valuation" | "financial_health" | "risk_momentum"; title: string; metrics: InvestmentMetric[]; analysis: string; action: InvestmentAction; confidence: "low" | "medium" | "high"; rationale: string; }
 export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
-export type FreshnessKind = "market" | "technical" | "fundamentals" | "sector" | "ai";
+export type FreshnessKind = "market" | "technical" | "fundamentals" | "disclosures" | "sector" | "ai";
 export type FreshnessStatus = "Live" | "Delayed" | "EOD" | "Cached" | "Stale";
 export type MarketSession = "open" | "closed";
 export interface FreshnessInfo { providerTimestamp: string | null; fetchedAt: string | null; expiresAt: string | null; sourceName: string; sourceUrl: string | null; dataQuality: string | null; lastError: string | null; refreshStatus: string | null; status: FreshnessStatus; marketSession: MarketSession; }
@@ -25,7 +25,8 @@ export interface CurrentMarketSnapshot {
   price_last_error: string | null;
   price_refresh_status: string | null;
 }
-export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; currentMarketSnapshot: CurrentMarketSnapshot; marketFreshness: FreshnessInfo; technicalFreshness: FreshnessInfo; fundamentalsFreshness: FreshnessInfo; }
+export interface OfficialDisclosure { title: string; excerpt: string | null; publishedAt: string; sourceName: string; sourceUrl: string; }
+export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; disclosures: OfficialDisclosure[]; related: RelatedStock[]; updatedAt: string | null; currentMarketSnapshot: CurrentMarketSnapshot; marketFreshness: FreshnessInfo; technicalFreshness: FreshnessInfo; fundamentalsFreshness: FreshnessInfo; disclosureFreshness: FreshnessInfo; }
 export interface ScreenerCriterion { key: string; label: string; value: string | number | null; target: string; passed: boolean | null; }
 export interface RankingItem { rank: number; symbol: string; company: string; sector: string; industry?: string; exchange?: "HOSE" | "HNX" | "UPCOM"; price: number; change: number; score: number; rating: "Strong Buy" | "Buy" | "Neutral" | "Sell"; marketCap?: number; averageVolume20?: number; pe?: number; roe?: number; revenueGrowth?: number; profitGrowth?: number; debtToEquity?: number; passedCriteria?: number; availableCriteria?: number; eligible?: boolean; screenedAt?: string; freshness?: FreshnessInfo; criteria?: ScreenerCriterion[]; rsi14?: number; relativeVolume?: number; trend?: "Bullish" | "Bearish" | "Flat"; }
 export interface SectorAiBrief { sector: string; symbols: string[]; summary: string; highlights: string[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
