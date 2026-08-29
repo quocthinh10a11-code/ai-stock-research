@@ -10,7 +10,7 @@ import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
 import { groupTopFiveBySector, type SectorRankingGroup } from "@/lib/data/group-sector-rankings";
 import { sectorNames } from "@/lib/sector-taxonomy";
 import { cn, formatVnd } from "@/lib/utils";
-import type { RankingItem, ScreenerCriterion } from "@/types/stock";
+import type { RankingItem, ScreenerCriterion, ScreenerExclusionSummary } from "@/types/stock";
 
 const ALL_SECTORS = "Tất cả";
 
@@ -147,9 +147,11 @@ function SectorRankingCard({
 
 export function DiscoverClient({
   items,
+  exclusions = [],
   initialWatchlist = [],
 }: {
   items: RankingItem[];
+  exclusions?: ScreenerExclusionSummary[];
   initialWatchlist?: string[];
 }) {
   const groups = useMemo(() => groupTopFiveBySector(items), [items]);
@@ -160,6 +162,12 @@ export function DiscoverClient({
     : groups.filter((group) => group.sector === active);
   const latestScreenedAt = items.find((item) => item.screenedAt)?.screenedAt;
   const rankingFreshness = items.find((item) => item.freshness)?.freshness;
+  const visibleExclusions = active === ALL_SECTORS ? exclusions : exclusions.filter((item) => item.sector === active);
+  const excludedTotal = visibleExclusions.reduce((total, item) => total + item.count, 0);
+  const exclusionCounts = visibleExclusions.reduce<Record<string, number>>((counts, item) => {
+    counts[item.reason] = (counts[item.reason] ?? 0) + item.count;
+    return counts;
+  }, {});
 
   return (
     <>
@@ -187,6 +195,28 @@ export function DiscoverClient({
           : <p className="text-xs text-slate-500">{latestScreenedAt ? `Dữ liệu lúc ${new Date(latestScreenedAt).toLocaleString("vi-VN")}` : "Đang dùng dữ liệu thị trường dự phòng"}</p>}
         </div>
       </div>
+
+      {visibleExclusions.length > 0 && (
+        <details className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3">
+          <summary className="cursor-pointer text-xs font-semibold text-amber-900">
+            Vì sao {excludedTotal} mã/công cụ chưa xuất hiện trong screener?
+          </summary>
+          <div className="mt-3 grid gap-3 text-xs text-slate-700 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
+            <ul className="space-y-1.5">
+              {Object.entries(exclusionCounts).sort((a, b) => b[1] - a[1]).map(([reason, count]) => (
+                <li key={reason} className="flex justify-between gap-3"><span>{reason}</span><strong>{count}</strong></li>
+              ))}
+            </ul>
+            <div>
+              <p className="font-semibold text-navy">Ví dụ gần nhất</p>
+              <p className="mt-1 leading-5 text-slate-600">
+                {visibleExclusions.flatMap((item) => item.sampleSymbols.map((symbol) => `${symbol} — ${item.reason}`)).slice(0, 12).join("; ")}
+              </p>
+              <p className="mt-2 text-[11px] text-slate-500">ETF/quỹ/chứng quyền được loại trước khi gọi OHLCV và chỉ số tài chính. Lỗi nguồn không làm mất dữ liệu screener đã cache.</p>
+            </div>
+          </div>
+        </details>
+      )}
 
       {active === ALL_SECTORS ? (
         <div className="mt-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs leading-5 text-slate-600">

@@ -1,6 +1,21 @@
 import { createPublicDataClient } from "@/lib/supabase/public-data";
 import { buildFreshness } from "@/lib/freshness";
-import type { RankingItem, ScreenerCriterion } from "@/types/stock";
+import type { RankingItem, ScreenerCriterion, ScreenerExclusionSummary } from "@/types/stock";
+
+export async function getScreeningExclusions(): Promise<ScreenerExclusionSummary[]> {
+  const supabase = createPublicDataClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("latest_sector_exclusion_summary")
+    .select("sector_group,reason_code,reason_detail,excluded_count,sample_symbols,observed_at")
+    .order("excluded_count", { ascending: false });
+  if (error || !data) return [];
+  return data.map((row) => ({
+    sector: row.sector_group == null ? null : String(row.sector_group),
+    reasonCode: String(row.reason_code), reason: String(row.reason_detail), count: Number(row.excluded_count),
+    sampleSymbols: Array.isArray(row.sample_symbols) ? row.sample_symbols.map(String) : [], observedAt: String(row.observed_at),
+  }));
+}
 
 function ratingForScore(score: number): RankingItem["rating"] {
   if (score >= 80) return "Strong Buy";

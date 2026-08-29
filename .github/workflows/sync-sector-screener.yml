@@ -29,6 +29,7 @@ jobs:
       SCREENER_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 11 * * 1-5' && 'full' || 'intraday') }}
       SCREENER_REQUEST_DELAY_SECONDS: "1.2"
       SCREENER_BOARD_DELAY_SECONDS: "1.2"
+      SCREENER_FUNDAMENTAL_REFRESH_DAYS: "7"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

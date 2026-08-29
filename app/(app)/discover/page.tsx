@@ -1,10 +1,9 @@
 import { DiscoverClient } from "@/components/features/DiscoverClient";
-import { getRankings } from "@/lib/data/get-rankings";
+import { getRankings, getScreeningExclusions } from "@/lib/data/get-rankings";
 import { getUserWatchlist } from "@/lib/data/get-user-research";
 
 export default async function DiscoverPage() {
-  const rankings = await getRankings();
-  const watchlist = await getUserWatchlist();
+  const [rankings, exclusions, watchlist] = await Promise.all([getRankings(), getScreeningExclusions(), getUserWatchlist()]);
   return (
     <section className="mx-auto max-w-7xl px-5 py-10">
       <div className="mb-6">
@@ -13,7 +12,7 @@ export default async function DiscoverPage() {
           Top 5 đáng quan tâm trong 10 nhóm ngành, dựa trên thanh khoản, tăng trưởng, hiệu quả, định giá và tiêu chí riêng từng ngành.
         </p>
       </div>
-      <DiscoverClient items={rankings} initialWatchlist={watchlist} />
+      <DiscoverClient items={rankings} exclusions={exclusions} initialWatchlist={watchlist} />
     </section>
   );
 }
