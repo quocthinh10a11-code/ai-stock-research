@@ -16,7 +16,7 @@ export function RealtimeResearch({ symbol }: { symbol: string }) {
     setLoading(true);
     setError("");
     try {
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let attempt = 0; attempt < 36; attempt += 1) {
         const response = await fetch(`/api/research/${encodeURIComponent(symbol)}`, { method: "POST" });
         const raw = await response.text();
         let body: (GroundedResearch & { error?: string }) | { pending: true; retryAfterMs?: number; error?: string };

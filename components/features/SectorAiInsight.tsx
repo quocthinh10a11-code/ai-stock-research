@@ -17,7 +17,7 @@ export function SectorAiInsight({ sector }: { sector: string }) {
     setBrief(null);
     setError("");
     void (async () => {
-      for (let retry = 0; retry < 8; retry += 1) {
+      for (let retry = 0; retry < 36; retry += 1) {
         const response = await fetch("/api/discover/sector", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sector }), signal: controller.signal,
         });
