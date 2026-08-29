@@ -1,0 +1,48 @@
+name: Process targeted refresh queue
+
+on:
+  workflow_dispatch:
+    inputs:
+      shard:
+        description: "Shard index from 0 to 3"
+        required: false
+        default: "0"
+      batch_size:
+        description: "Maximum jobs for this run"
+        required: false
+        default: "4"
+  schedule:
+    - cron: "7,22,37,52 2-8 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: targeted-refresh-worker
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-market-data.txt
+      - run: pip install -r requirements-market-data.txt
+      - name: Process one quota-bounded shard
+        run: python scripts/process_refresh_jobs.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+          REFRESH_SHARD: ${{ inputs.shard || '0' }}
+          REFRESH_SHARD_COUNT: "4"
+          REFRESH_BATCH_SIZE: ${{ github.event_name == 'workflow_dispatch' && inputs.batch_size || '4' }}
+          REFRESH_PREPARE_ALL_SHARDS: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
+          REFRESH_WORKER_ID: github-${{ github.run_id }}-${{ github.run_attempt }}
+          VNSTOCK_FINANCE_SOURCES: VCI
+          VNSTOCK_REQUEST_DELAY_SECONDS: "5"

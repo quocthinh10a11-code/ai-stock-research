@@ -23,19 +23,25 @@ export async function GET(request: Request) {
     marketExpiresAt: market?.price_expires_at,
     fundamentalsExpiresAt: fundamentals?.expires_at,
   });
+  const { data: { user } } = await auth.auth.getUser();
+  const admin = user ? createAdminClient() : null;
+  if (admin) {
+    const { error: activityError } = await admin.rpc("touch_hot_symbol", {
+      p_symbol: query,
+      p_reason: "search",
+      p_hot_minutes: 60,
+    });
+    if (activityError) console.error("Search activity tracking failed", { symbol: query, code: activityError.code });
+  }
   let refresh = { requested: false, dataTypes };
-  if (dataTypes.length > 0) {
-    const { data: { user } } = await auth.auth.getUser();
-    const admin = user ? createAdminClient() : null;
-    if (user && admin) {
-      const { error: refreshError } = await admin.rpc("enqueue_refresh_jobs", {
-        p_symbol: query,
-        p_data_types: dataTypes,
-        p_requested_by: user.id,
-      });
-      if (refreshError) console.error("Search refresh enqueue failed", { symbol: query, code: refreshError.code, message: refreshError.message });
-      else refresh = { requested: true, dataTypes };
-    }
+  if (dataTypes.length > 0 && user && admin) {
+    const { error: refreshError } = await admin.rpc("enqueue_refresh_jobs", {
+      p_symbol: query,
+      p_data_types: dataTypes,
+      p_requested_by: user.id,
+    });
+    if (refreshError) console.error("Search refresh enqueue failed", { symbol: query, code: refreshError.code, message: refreshError.message });
+    else refresh = { requested: true, dataTypes };
   }
   return NextResponse.json({ found: true, stock: data, refresh });
 }

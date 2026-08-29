@@ -118,6 +118,25 @@ class SupabaseRest:
             raise RuntimeError(f"Supabase returned an invalid response for {table}")
         return result
 
+    def rpc(self, function_name: str, payload: dict[str, Any]) -> Any:
+        request = Request(
+            f"{self.url}/rest/v1/rpc/{function_name}",
+            data=json.dumps(payload, allow_nan=False).encode("utf-8"),
+            method="POST",
+            headers={
+                "apikey": self.key,
+                "Authorization": f"Bearer {self.key}",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urlopen(request, timeout=60) as response:
+                body = response.read().decode("utf-8")
+        except HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Supabase RPC {function_name} failed: HTTP {error.code} {detail}") from error
+        return json.loads(body) if body else None
+
     def recent_research_symbols(self, limit: int = 20) -> list[str]:
         query = urlencode({"select": "symbol", "order": "viewed_at.desc", "limit": str(limit * 4)})
         request = Request(
