@@ -6,6 +6,7 @@ import { ArrowUpRight, Check, ChevronDown, CircleHelp, X } from "lucide-react";
 import { DisclaimerCard } from "./DisclaimerCard";
 import { SectorAiInsight } from "./SectorAiInsight";
 import { WatchlistButton } from "./WatchlistButton";
+import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
 import { groupTopFiveBySector, type SectorRankingGroup } from "@/lib/data/group-sector-rankings";
 import { sectorNames } from "@/lib/sector-taxonomy";
 import { cn, formatVnd } from "@/lib/utils";
@@ -158,6 +159,7 @@ export function DiscoverClient({
     ? groups
     : groups.filter((group) => group.sector === active);
   const latestScreenedAt = items.find((item) => item.screenedAt)?.screenedAt;
+  const rankingFreshness = items.find((item) => item.freshness)?.freshness;
 
   return (
     <>
@@ -180,9 +182,10 @@ export function DiscoverClient({
             </button>
           ))}
         </div>
-        <p className="pb-2 text-xs text-slate-500">
-          {latestScreenedAt ? `Dữ liệu lúc ${new Date(latestScreenedAt).toLocaleString("vi-VN")}` : "Đang dùng dữ liệu thị trường dự phòng"}
-        </p>
+        <div className="pb-2">{rankingFreshness
+          ? <FreshnessBadge freshness={rankingFreshness}/>
+          : <p className="text-xs text-slate-500">{latestScreenedAt ? `Dữ liệu lúc ${new Date(latestScreenedAt).toLocaleString("vi-VN")}` : "Đang dùng dữ liệu thị trường dự phòng"}</p>}
+        </div>
       </div>
 
       {active === ALL_SECTORS ? (

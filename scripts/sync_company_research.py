@@ -5,7 +5,7 @@ import os
 import re
 import time
 from calendar import monthrange
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
@@ -150,6 +150,7 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                     if period not in period_order:
                         period_order.append(period)
                     combined.setdefault(period, {}).update(values[period])
+            fetched_at = datetime.now(timezone.utc)
             rows = [{
                 "symbol": symbol,
                 "period_type": "quarter",
@@ -157,6 +158,12 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                 "period_end": period_end_date(period),
                 "unit": unit,
                 "source": f"vnstock-community/{source.lower()}",
+                "provider_timestamp": f"{period_end_date(period)}T00:00:00+07:00",
+                "fetched_at": fetched_at.isoformat(),
+                "expires_at": (fetched_at + timedelta(days=7)).isoformat(),
+                "source_name": f"vnstock-community/{source.lower()}",
+                "data_quality": "partial",
+                "refresh_status": "ready",
                 **combined[period],
             } for period in period_order[:20]]
             if not rows:

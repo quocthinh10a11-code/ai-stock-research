@@ -13,7 +13,7 @@ import os
 import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -231,7 +231,10 @@ def extend_stock_metadata(symbols: list[str]) -> None:
 
 def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str], start: str, end: str, multiplier: float) -> int:
     company, sector, exchange = metadata
-    client.upsert("stocks", [{"symbol": symbol, "company_name": company, "sector": sector, "exchange": exchange, "updated_at": f"{date.today().isoformat()}T00:00:00Z"}], "symbol")
+    fetched_at = datetime.now(timezone.utc)
+    fetched_iso = fetched_at.isoformat()
+    expires_iso = (fetched_at + timedelta(hours=36)).isoformat()
+    client.upsert("stocks", [{"symbol": symbol, "company_name": company, "sector": sector, "exchange": exchange, "updated_at": fetched_iso}], "symbol")
     frame = fetch_ohlcv(symbol, start, end, multiplier)
     price_rows = [{
         "symbol": symbol,
@@ -241,6 +244,12 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
         "low": finite(row.low),
         "close": finite(row.close),
         "volume": int(row.volume),
+        "provider_timestamp": f"{row.date.isoformat()}T15:00:00+07:00",
+        "fetched_at": fetched_iso,
+        "expires_at": expires_iso,
+        "source_name": "vnstock-community-v4",
+        "data_quality": "eod",
+        "refresh_status": "ready",
     } for row in frame.itertuples()]
     for index in range(0, len(price_rows), 250):
         client.upsert("price_history", price_rows[index:index + 250], "symbol,date")
@@ -264,6 +273,12 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
         "signal_value": finite(value),
         "signal_direction": direction(bool(is_supporting)),
         "source": "vnstock-community-v4/rule-based-indicators",
+        "provider_timestamp": f"{latest_date}T15:00:00+07:00",
+        "fetched_at": fetched_iso,
+        "expires_at": expires_iso,
+        "source_name": "vnstock-community-v4/rule-based-indicators",
+        "data_quality": "eod",
+        "refresh_status": "ready",
     } for name, value, is_supporting in signals]
     client.upsert("evidence_snapshots", evidence_rows, "symbol,date,signal_name")
 
@@ -291,6 +306,12 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
             "atr14": round(finite(latest["atr14"]), 2),
         },
         "watch_for_text": "Re-evaluate when the close crosses EMA20 or the EMA20/EMA50 ordering changes.",
+        "provider_timestamp": f"{latest_date}T15:00:00+07:00",
+        "fetched_at": fetched_iso,
+        "expires_at": expires_iso,
+        "source_name": "rule-based-analysis",
+        "data_quality": "eod",
+        "refresh_status": "ready",
     }], "symbol,analysis_date")
     return len(price_rows)
 

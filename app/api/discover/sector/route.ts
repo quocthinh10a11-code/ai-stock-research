@@ -157,6 +157,11 @@ export async function POST(request: Request) {
     as_of: report.asOf,
     expires_at: new Date(now.getTime() + cacheMinutes * 60_000).toISOString(),
     model: report.model,
+    provider_timestamp: report.asOf,
+    fetched_at: report.asOf,
+    source_name: "tavily+gemini",
+    data_quality: "verified-sources",
+    refresh_status: "ready",
   }, { onConflict: "sector_group" });
   if (cacheError) console.error("Sector AI cache write failed", cacheError.message);
   return NextResponse.json(report);

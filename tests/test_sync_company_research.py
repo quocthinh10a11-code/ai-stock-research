@@ -106,6 +106,11 @@ class CompanyListingTests(unittest.TestCase):
         self.assertEqual((count, source), (1, "VCI"))
         rows = client.upsert.call_args.args[1]
         self.assertEqual(rows[0]["source"], "vnstock-community/vci")
+        self.assertEqual(rows[0]["source_name"], "vnstock-community/vci")
+        self.assertEqual(rows[0]["data_quality"], "partial")
+        self.assertEqual(rows[0]["refresh_status"], "ready")
+        self.assertIn("fetched_at", rows[0])
+        self.assertIn("expires_at", rows[0])
         self.assertEqual(rows[0]["revenue"], 10.0)
 
 

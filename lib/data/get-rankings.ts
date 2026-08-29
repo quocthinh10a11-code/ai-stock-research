@@ -1,4 +1,5 @@
 import { createPublicDataClient } from "@/lib/supabase/public-data";
+import { buildFreshness } from "@/lib/freshness";
 import type { RankingItem, ScreenerCriterion } from "@/types/stock";
 
 function ratingForScore(score: number): RankingItem["rating"] {
@@ -25,7 +26,7 @@ export async function getRankings(): Promise<RankingItem[]> {
   if (!supabase) return [];
   const { data: screened, error: screenedError } = await supabase
     .from("latest_sector_screenings")
-    .select("symbol,company_name,sector_group,industry,exchange,price,change_pct,market_cap,average_volume20,pe,roe,revenue_growth,profit_growth,debt_to_equity,score,passed_criteria,available_criteria,eligible,criteria_json,as_of")
+    .select("symbol,company_name,sector_group,industry,exchange,price,change_pct,market_cap,average_volume20,pe,roe,revenue_growth,profit_growth,debt_to_equity,score,passed_criteria,available_criteria,eligible,criteria_json,as_of,provider_timestamp,fetched_at,expires_at,source_name,source_url,data_quality,last_error,refresh_status")
     .not("price", "is", null);
 
   if (!screenedError && screened?.length) {
@@ -51,6 +52,17 @@ export async function getRankings(): Promise<RankingItem[]> {
       availableCriteria: Number(row.available_criteria),
       eligible: Boolean(row.eligible),
       screenedAt: String(row.as_of),
+      freshness: buildFreshness({
+        kind: "sector",
+        providerTimestamp: row.provider_timestamp == null ? String(row.as_of) : String(row.provider_timestamp),
+        fetchedAt: row.fetched_at == null ? null : String(row.fetched_at),
+        expiresAt: row.expires_at == null ? null : String(row.expires_at),
+        sourceName: String(row.source_name ?? "vnstock-community-v4/vci-kbs"),
+        sourceUrl: row.source_url == null ? null : String(row.source_url),
+        dataQuality: row.data_quality == null ? null : String(row.data_quality),
+        lastError: row.last_error == null ? null : String(row.last_error),
+        refreshStatus: row.refresh_status == null ? null : String(row.refresh_status),
+      }),
       criteria: Array.isArray(row.criteria_json) ? row.criteria_json as ScreenerCriterion[] : [],
     } satisfies RankingItem))
       .sort((a, b) => Number(b.eligible) - Number(a.eligible) || b.score - a.score || b.change - a.change)

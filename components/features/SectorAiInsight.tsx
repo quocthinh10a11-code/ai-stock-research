@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, RefreshCw, Sparkles } from "lucide-react";
 import type { SectorAiBrief } from "@/types/stock";
+import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
+import { buildFreshness } from "@/lib/freshness";
 
 export function SectorAiInsight({ sector }: { sector: string }) {
   const [brief, setBrief] = useState<SectorAiBrief | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const freshness = brief ? buildFreshness({ kind: "ai", providerTimestamp: brief.asOf, fetchedAt: brief.asOf, expiresAt: new Date(new Date(brief.asOf).getTime() + 30 * 60_000).toISOString(), sourceName: "Tavily + Gemini", sourceUrl: null, dataQuality: "verified-sources", lastError: null, refreshStatus: "ready" }) : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,11 +39,7 @@ export function SectorAiInsight({ sector }: { sector: string }) {
           <Sparkles size={17} className="text-blue-800" aria-hidden="true" />
           <h2 className="font-bold text-navy">AI insight mới nhất · {sector}</h2>
         </div>
-        {brief && (
-          <span className="text-xs text-slate-500">
-            {brief.cached ? "Bản cache" : "Vừa tổng hợp"} · {new Date(brief.asOf).toLocaleString("vi-VN")}
-          </span>
-        )}
+        {brief && freshness && <FreshnessBadge freshness={freshness}/>}
       </div>
 
       {!brief && !error && (

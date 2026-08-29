@@ -258,6 +258,7 @@ def stock_payload(item: dict[str, str], as_of: str) -> dict[str, Any]:
 def full_sync(client: SupabaseRest) -> int:
     universe = load_universe()
     as_of = datetime.now(timezone.utc).isoformat()
+    expires_at = (datetime.fromisoformat(as_of) + timedelta(minutes=30)).isoformat()
     for offset in range(0, len(universe), 250):
         client.upsert("stocks", [stock_payload(item, as_of) for item in universe[offset:offset + 250]], "symbol")
     board = fetch_price_board([item["symbol"] for item in universe])
@@ -291,6 +292,12 @@ def full_sync(client: SupabaseRest) -> int:
                 **quote,
                 **metrics,
                 "source": "vnstock-community-v4/vci-kbs",
+                "provider_timestamp": as_of,
+                "fetched_at": as_of,
+                "expires_at": expires_at,
+                "source_name": "vnstock-community-v4/vci-kbs",
+                "data_quality": "delayed",
+                "refresh_status": "ready",
             }
             rows.append(row)
         except Exception as error:
@@ -318,6 +325,7 @@ def intraday_sync(client: SupabaseRest) -> int:
         raise RuntimeError("No cached sector screening exists; run SCREENER_MODE=full first")
     board = fetch_price_board([str(row["symbol"]) for row in cached])
     as_of = datetime.now(timezone.utc).isoformat()
+    expires_at = (datetime.fromisoformat(as_of) + timedelta(minutes=30)).isoformat()
     medians: dict[str, float] = {}
     for industry in {str(row["industry"]) for row in cached}:
         values = [float(row["inventory_turnover"]) for row in cached if row["industry"] == industry and row.get("inventory_turnover") is not None]
@@ -328,7 +336,19 @@ def intraday_sync(client: SupabaseRest) -> int:
         quote = board.get(str(cached_row["symbol"]))
         if not quote:
             continue
-        row = {**cached_row, **quote, "snapshot_date": date.today().isoformat(), "as_of": as_of}
+        row = {
+            **cached_row,
+            **quote,
+            "snapshot_date": date.today().isoformat(),
+            "as_of": as_of,
+            "provider_timestamp": as_of,
+            "fetched_at": as_of,
+            "expires_at": expires_at,
+            "source_name": "vnstock-community-v4/vci-kbs",
+            "data_quality": "delayed",
+            "last_error": None,
+            "refresh_status": "ready",
+        }
         row.pop("id", None)
         row.pop("company_name", None)
         updated.append(score_row(row, medians.get(str(row["industry"]))))

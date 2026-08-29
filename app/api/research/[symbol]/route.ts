@@ -165,7 +165,7 @@ export async function POST(_: Request, context: { params: Promise<{ symbol: stri
     cached: false,
     model,
   };
-  const { error: cacheError } = await admin.from("ai_research_reports").insert({ symbol, as_of: asOf, model, summary_text: report.summary, outlook_text: report.outlook, catalysts_json: report.catalysts, risks_json: report.risks, forecast_json: report.forecasts, decision_matrix_json: report.decisionMatrix, citations_json: report.citations, expires_at: new Date(Date.now() + cacheMinutes * 60_000).toISOString() });
+  const { error: cacheError } = await admin.from("ai_research_reports").insert({ symbol, as_of: asOf, model, summary_text: report.summary, outlook_text: report.outlook, catalysts_json: report.catalysts, risks_json: report.risks, forecast_json: report.forecasts, decision_matrix_json: report.decisionMatrix, citations_json: report.citations, expires_at: new Date(Date.now() + cacheMinutes * 60_000).toISOString(), provider_timestamp: asOf, fetched_at: asOf, source_name: tavilyKey ? "tavily+gemini" : "gemini-google-search", data_quality: "verified-sources", refresh_status: "ready" });
   if (cacheError) console.error("AI research cache write failed", cacheError.message);
   return NextResponse.json(report);
 }
