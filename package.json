@@ -11,6 +11,7 @@
     "test:gemini": "node --experimental-strip-types --test tests/gemini-provider.test.ts tests/tavily-search.test.ts tests/research-report.test.ts",
     "test:discover": "node --experimental-strip-types --test tests/sector-rankings.test.ts",
     "test:freshness": "node --experimental-strip-types --test tests/freshness.test.ts",
+    "test:refresh": "node --experimental-strip-types --test tests/refresh-contract.test.ts",
     "test:screener": "python -m unittest tests.test_sector_screener",
     "sync:market": "python scripts/sync_market_data.py",
     "sync:companies": "python scripts/sync_company_research.py",
