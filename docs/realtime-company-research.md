@@ -6,7 +6,7 @@ The analysis workspace combines four free-tier sources:
 - Tavily Search for current Vietnamese public URLs and source excerpts (free quota applies).
 - Gemini 3.6 Flash for synthesis of Tavily results without the paid Google Search tool.
 - Gemini 2.5 Flash-Lite Google Search grounding as a legacy fallback when Tavily is not configured.
-- Supabase Free for public market data and a 15-minute AI research cache.
+- Supabase Free for public market data and evidence-hash AI caching (60-minute Tavily source TTL for a stock).
 
 The database reserves each uncached provider request in an atomic UTC daily counter before calling external providers. When Tavily is configured, the default application limit is 30 requests/day so the 1,000-credit monthly free allowance lasts roughly a month. The hard database maximum remains 500.
 
@@ -24,7 +24,7 @@ Add these server-only values to Vercel and GitHub Actions where applicable:
 ```text
 SUPABASE_SECRET_KEY=<Supabase secret/service-role key>
 GEMINI_API_KEY=<Google AI Studio free-tier key>
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODELS=gemini-2.5-flash-lite,gemini-2.5-flash
 GEMINI_SYNTHESIS_MODEL=gemini-3.6-flash
 TAVILY_API_KEY=<Tavily Researcher free-tier key>
 AI_DAILY_REQUEST_LIMIT=30

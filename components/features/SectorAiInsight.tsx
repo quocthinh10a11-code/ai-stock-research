@@ -10,22 +10,29 @@ export function SectorAiInsight({ sector }: { sector: string }) {
   const [brief, setBrief] = useState<SectorAiBrief | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const freshness = brief ? buildFreshness({ kind: "ai", providerTimestamp: brief.asOf, fetchedAt: brief.asOf, expiresAt: new Date(new Date(brief.asOf).getTime() + 30 * 60_000).toISOString(), sourceName: "Tavily + Gemini", sourceUrl: null, dataQuality: "verified-sources", lastError: null, refreshStatus: "ready" }) : null;
+  const freshness = brief ? buildFreshness({ kind: "ai", providerTimestamp: brief.asOf, fetchedAt: brief.asOf, expiresAt: brief.expiresAt, sourceName: "Tavily + Gemini", sourceUrl: null, dataQuality: "verified-sources", lastError: null, refreshStatus: "ready" }) : null;
 
   useEffect(() => {
     const controller = new AbortController();
     setBrief(null);
     setError("");
-    void fetch("/api/discover/sector", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sector }),
-      signal: controller.signal,
-    }).then(async (response) => {
-      const payload = await response.json() as SectorAiBrief | { error?: string };
-      if (!response.ok) throw new Error("error" in payload ? payload.error : "Không thể tải AI insight theo ngành.");
-      setBrief(payload as SectorAiBrief);
-    }).catch((caught) => {
+    void (async () => {
+      for (let retry = 0; retry < 8; retry += 1) {
+        const response = await fetch("/api/discover/sector", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sector }), signal: controller.signal,
+        });
+        const payload = await response.json() as SectorAiBrief | { pending?: boolean; retryAfterMs?: number; error?: string };
+        if (response.status === 202 && "pending" in payload) {
+          await new Promise((resolve) => setTimeout(resolve, Math.max(1_000, Math.min(Number(payload.retryAfterMs ?? 2_500), 5_000))));
+          if (controller.signal.aborted) return;
+          continue;
+        }
+        if (!response.ok) throw new Error("error" in payload ? payload.error : "Không thể tải AI insight theo ngành.");
+        setBrief(payload as SectorAiBrief);
+        return;
+      }
+      throw new Error("AI insight đang được xử lý lâu hơn dự kiến. Hãy thử lại sau ít phút.");
+    })().catch((caught) => {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(caught instanceof Error ? caught.message : "Không thể tải AI insight theo ngành.");
     });

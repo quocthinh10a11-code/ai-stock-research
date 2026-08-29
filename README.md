@@ -25,11 +25,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
 SUPABASE_SECRET_KEY=sb_secret_your-key
 GEMINI_API_KEY=your-google-ai-studio-key
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODELS=gemini-2.5-flash-lite,gemini-2.5-flash
 GEMINI_SYNTHESIS_MODEL=gemini-3.6-flash
 TAVILY_API_KEY=your-free-tavily-key
 AI_DAILY_REQUEST_LIMIT=30
 ```
+
+`GEMINI_MODEL` remains a supported legacy singular fallback when `GEMINI_MODELS` is not set. Tavily retrieval plus `GEMINI_SYNTHESIS_MODEL` is the primary path.
 
 ## Supabase setup
 
