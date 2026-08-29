@@ -17,7 +17,7 @@ Authenticated callers may explicitly request `market`, `fundamentals`, or `discl
 - `claim_refresh_jobs(worker_id, limit, lock_timeout_seconds)` atomically claims available rows with `FOR UPDATE SKIP LOCKED`.
 - A stale running lock can be reclaimed after the supplied timeout.
 - `complete_refresh_job(..., true)` marks the job succeeded.
-- `complete_refresh_job(..., false, error)` retries after 30, 60, 120, then 240 seconds by default. The delay is capped at one hour and the row becomes failed after `max_attempts`.
+- `complete_refresh_job(..., false, error)` retries after 30, 60, then 120 seconds across four attempts by default. The delay is capped at one hour when `max_attempts` is configured higher, and the row becomes failed after its final attempt.
 - Provider work must happen outside the database transaction. Workers claim, perform I/O, then complete the job.
 
 ## Production worker decision remains open
