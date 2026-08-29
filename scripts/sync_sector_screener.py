@@ -107,6 +107,19 @@ def exclusion(item: dict[str, Any], as_of: str, phase: str, reason_code: str, re
     }
 
 
+def dedupe_exclusions(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one row per database conflict key before a bulk upsert."""
+    unique: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in rows:
+        key = (
+            str(row.get("symbol") or ""),
+            str(row.get("snapshot_date") or ""),
+            str(row.get("reason_code") or ""),
+        )
+        unique[key] = row
+    return list(unique.values())
+
+
 def load_universe_with_exclusions(as_of: str) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
     exchange_frames: list[pd.DataFrame] = []
     listing = Listing(source=os.getenv("VNSTOCK_LISTING_SOURCE", "KBS"))
@@ -468,6 +481,7 @@ def full_sync(client: SupabaseRest) -> int:
     scored = [score_row(row, medians.get(str(row["industry"]))) for row in rows]
     for offset in range(0, len(scored), 100):
         client.upsert("sector_screenings", scored[offset:offset + 100], "symbol,snapshot_date")
+    exclusions = dedupe_exclusions(exclusions)
     for offset in range(0, len(exclusions), 100):
         client.upsert("sector_screening_exclusions", exclusions[offset:offset + 100], "symbol,snapshot_date,reason_code")
     print(f"Sector screener full sync: {len(scored)} candidates from {len(universe)} HOSE/HNX equities", flush=True)
@@ -498,6 +512,7 @@ def intraday_sync(client: SupabaseRest) -> int:
         updated.append(build_intraday_row(cached_row, quote, as_of, expires_at, medians.get(str(cached_row["industry"]))))
     for offset in range(0, len(updated), 100):
         client.upsert("sector_screenings", updated[offset:offset + 100], "symbol,snapshot_date")
+    exclusions = dedupe_exclusions(exclusions)
     for offset in range(0, len(exclusions), 100):
         client.upsert("sector_screening_exclusions", exclusions[offset:offset + 100], "symbol,snapshot_date,reason_code")
     print(f"Sector screener intraday refresh: {len(updated)} symbols at {as_of}", flush=True)

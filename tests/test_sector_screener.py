@@ -2,7 +2,7 @@ import unittest
 
 from datetime import datetime, timezone
 
-from scripts.sync_sector_screener import GROUP_BY_CODE, TAXONOMY, build_intraday_row, classify_instrument, reusable_fundamentals, score_row
+from scripts.sync_sector_screener import GROUP_BY_CODE, TAXONOMY, build_intraday_row, classify_instrument, dedupe_exclusions, reusable_fundamentals, score_row
 
 
 class SectorScreenerTests(unittest.TestCase):
@@ -79,6 +79,18 @@ class SectorScreenerTests(unittest.TestCase):
         expired = reusable_fundamentals(cached, datetime(2026, 9, 10, tzinfo=timezone.utc), 7)
         self.assertEqual(reused["pe"], 12)
         self.assertIsNone(expired)
+
+    def test_duplicate_exclusions_are_collapsed_before_bulk_upsert(self):
+        rows = [
+            {"symbol": "AAA", "snapshot_date": "2026-08-29", "reason_code": "missing_quote", "reason_detail": "first"},
+            {"symbol": "AAA", "snapshot_date": "2026-08-29", "reason_code": "missing_quote", "reason_detail": "latest"},
+            {"symbol": "AAA", "snapshot_date": "2026-08-29", "reason_code": "missing_ohlcv", "reason_detail": "different"},
+        ]
+
+        deduped = dedupe_exclusions(rows)
+
+        self.assertEqual(len(deduped), 2)
+        self.assertEqual(deduped[0]["reason_detail"], "latest")
 
 
 if __name__ == "__main__":
