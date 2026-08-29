@@ -30,7 +30,7 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
   const { data: stock } = await supabase.from("stocks").select("symbol,company_name,sector,exchange,updated_at").eq("symbol", normalized).maybeSingle();
   if (!stock) return null;
 
-  const { data: snapshot } = await supabase.from("latest_market_snapshots").select("symbol,company_name,close,previous_close,bias,price_date,price_provider_timestamp,price_fetched_at,price_expires_at,price_source_name,price_source_url,price_data_quality,price_last_error,price_refresh_status,technical_provider_timestamp,technical_fetched_at,technical_expires_at,technical_source_name,technical_source_url,technical_data_quality,technical_last_error,technical_refresh_status").eq("symbol", normalized).maybeSingle();
+  const { data: snapshot } = await supabase.from("current_market_snapshots").select("symbol,close,previous_close,bias,price_date,price_provider_timestamp,price_fetched_at,price_expires_at,price_source_name,price_source_url,price_data_quality,price_last_error,price_refresh_status,technical_provider_timestamp,technical_fetched_at,technical_expires_at,technical_source_name,technical_source_url,technical_data_quality,technical_last_error,technical_refresh_status").eq("symbol", normalized).maybeSingle();
 
   const { data: synthesis } = await supabase.from("agent_analysis").select("summary_text").eq("symbol", normalized).order("analysis_date", { ascending: false }).limit(1).maybeSingle();
   const { data: signals } = await supabase.from("evidence_snapshots").select("signal_name,signal_value,signal_direction,source,date").eq("symbol", normalized).order("date", { ascending: false }).limit(8);
@@ -90,6 +90,20 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
       } satisfies RelatedStock;
     }),
     updatedAt: snapshot?.price_date ?? stock.updated_at,
+    currentMarketSnapshot: {
+      symbol: stock.symbol,
+      price_date: snapshot?.price_date ?? null,
+      close: snapshot?.close ?? null,
+      previous_close: snapshot?.previous_close ?? null,
+      price_provider_timestamp: snapshot?.price_provider_timestamp ?? null,
+      price_fetched_at: snapshot?.price_fetched_at ?? null,
+      price_expires_at: snapshot?.price_expires_at ?? null,
+      price_source_name: snapshot?.price_source_name ?? "vnstock-community-v4",
+      price_source_url: snapshot?.price_source_url ?? null,
+      price_data_quality: snapshot?.price_data_quality ?? "unknown",
+      price_last_error: snapshot?.price_last_error ?? null,
+      price_refresh_status: snapshot?.price_refresh_status ?? "idle",
+    },
     marketFreshness: buildFreshness({
       kind: "market",
       providerTimestamp: snapshot?.price_provider_timestamp ?? snapshot?.price_date ?? null,

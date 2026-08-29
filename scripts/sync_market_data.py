@@ -313,6 +313,34 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
         "data_quality": "eod",
         "refresh_status": "ready",
     }], "symbol,analysis_date")
+
+    previous_close = frame.iloc[-2]["close"] if len(frame) > 1 else latest["close"]
+    client.upsert("current_market_snapshots", [{
+        "symbol": symbol,
+        "price_date": latest_date,
+        "close": finite(latest["close"]),
+        "previous_close": finite(previous_close),
+        "bias": bias,
+        "rsi14": finite(latest["rsi14"]),
+        "relative_volume": finite(latest["relative_volume"]),
+        "ema20": finite(latest["ema20"]),
+        "ema50": finite(latest["ema50"]),
+        "price_provider_timestamp": f"{latest_date}T15:00:00+07:00",
+        "price_fetched_at": fetched_iso,
+        "price_expires_at": expires_iso,
+        "price_source_name": "vnstock-community-v4",
+        "price_data_quality": "eod",
+        "price_last_error": None,
+        "price_refresh_status": "ready",
+        "technical_provider_timestamp": f"{latest_date}T15:00:00+07:00",
+        "technical_fetched_at": fetched_iso,
+        "technical_expires_at": expires_iso,
+        "technical_source_name": "vnstock-community-v4/rule-based-indicators",
+        "technical_data_quality": "eod",
+        "technical_last_error": None,
+        "technical_refresh_status": "ready",
+        "updated_at": fetched_iso,
+    }], "symbol")
     return len(price_rows)
 
 

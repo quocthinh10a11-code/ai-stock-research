@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   if (!data) return NextResponse.json({ found: false });
 
   const [{ data: market }, { data: fundamentals }, auth] = await Promise.all([
-    supabase.from("latest_market_snapshots").select("price_expires_at").eq("symbol", query).maybeSingle(),
+    supabase.from("current_market_snapshots").select("price_expires_at").eq("symbol", query).maybeSingle(),
     supabase.from("financial_periods").select("expires_at").eq("symbol", query).eq("period_type", "quarter").order("period_end", { ascending: false }).limit(1).maybeSingle(),
     createClient(),
   ]);

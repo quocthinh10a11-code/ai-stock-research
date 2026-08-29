@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { CompanyFinancialDashboard } from "@/components/features/CompanyFinancialDashboard";
+import { ProgressiveMarketSnapshot } from "@/components/features/ProgressiveMarketSnapshot";
 import { RealtimeResearch } from "@/components/features/RealtimeResearch";
 import { ResearchHistoryTracker } from "@/components/features/ResearchHistoryTracker";
 import { WatchlistButton } from "@/components/features/WatchlistButton";
@@ -22,9 +23,8 @@ export default async function AnalysisPage({ params }: { params: Promise<{ symbo
         <div>
           <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-base font-bold text-navy">{item.symbol}</span><span className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-600">{item.exchange}</span><span className="text-xs text-slate-500">{item.sector}</span></div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy md:text-4xl">{item.company}</h1>
-          <div className="mt-3"><FreshnessBadge freshness={item.marketFreshness}/></div>
         </div>
-        <div className="flex items-end gap-5"><WatchlistButton symbol={item.symbol} initiallySaved={watchlist.includes(item.symbol)}/><div className="text-right">{item.price == null ? <><p className="text-sm font-bold text-warning">Chưa có giá đồng bộ</p><p className="mt-1 text-xs text-slate-500">AI vẫn dùng nguồn web có dẫn chứng</p></> : <><p className="font-mono text-3xl font-bold text-navy">{item.price.toLocaleString("vi-VN")} ₫</p><p className={`mt-1 font-mono text-sm font-bold ${(item.change ?? 0) >= 0 ? "text-bull" : "text-bear"}`}>{(item.change ?? 0) >= 0 ? "+" : ""}{item.change ?? 0}%</p></>}</div></div>
+        <div className="flex w-full flex-col items-end gap-4 sm:w-auto sm:flex-row sm:items-start"><WatchlistButton symbol={item.symbol} initiallySaved={watchlist.includes(item.symbol)}/><ProgressiveMarketSnapshot initial={item.currentMarketSnapshot}/></div>
       </div>
     </header>
     <div className="mt-5"><RealtimeResearch symbol={item.symbol}/></div>

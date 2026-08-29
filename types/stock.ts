@@ -11,7 +11,21 @@ export type FreshnessKind = "market" | "technical" | "fundamentals" | "sector" |
 export type FreshnessStatus = "Live" | "Delayed" | "EOD" | "Cached" | "Stale";
 export type MarketSession = "open" | "closed";
 export interface FreshnessInfo { providerTimestamp: string | null; fetchedAt: string | null; expiresAt: string | null; sourceName: string; sourceUrl: string | null; dataQuality: string | null; lastError: string | null; refreshStatus: string | null; status: FreshnessStatus; marketSession: MarketSession; }
-export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; marketFreshness: FreshnessInfo; technicalFreshness: FreshnessInfo; fundamentalsFreshness: FreshnessInfo; }
+export interface CurrentMarketSnapshot {
+  symbol: string;
+  price_date: string | null;
+  close: number | string | null;
+  previous_close: number | string | null;
+  price_provider_timestamp: string | null;
+  price_fetched_at: string | null;
+  price_expires_at: string | null;
+  price_source_name: string;
+  price_source_url: string | null;
+  price_data_quality: string | null;
+  price_last_error: string | null;
+  price_refresh_status: string | null;
+}
+export interface StockAnalysis { symbol: string; company: string; sector: string; exchange: string; price: number | null; change: number | null; score: number; summary: string; evidence: EvidenceItem[]; financials: FinancialPeriod[]; related: RelatedStock[]; updatedAt: string | null; currentMarketSnapshot: CurrentMarketSnapshot; marketFreshness: FreshnessInfo; technicalFreshness: FreshnessInfo; fundamentalsFreshness: FreshnessInfo; }
 export interface ScreenerCriterion { key: string; label: string; value: string | number | null; target: string; passed: boolean | null; }
 export interface RankingItem { rank: number; symbol: string; company: string; sector: string; industry?: string; exchange?: "HOSE" | "HNX" | "UPCOM"; price: number; change: number; score: number; rating: "Strong Buy" | "Buy" | "Neutral" | "Sell"; marketCap?: number; averageVolume20?: number; pe?: number; roe?: number; revenueGrowth?: number; profitGrowth?: number; debtToEquity?: number; passedCriteria?: number; availableCriteria?: number; eligible?: boolean; screenedAt?: string; freshness?: FreshnessInfo; criteria?: ScreenerCriterion[]; rsi14?: number; relativeVolume?: number; trend?: "Bullish" | "Bearish" | "Flat"; }
 export interface SectorAiBrief { sector: string; symbols: string[]; summary: string; highlights: string[]; citations: ResearchCitation[]; asOf: string; cached: boolean; model: string; }
