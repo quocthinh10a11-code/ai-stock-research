@@ -48,6 +48,8 @@ AI_DAILY_REQUEST_LIMIT=30
 - `/analysis/[symbol]` authenticated stock research result
 - `/discover` authenticated synchronized ranking and watchlist
 
-Stock search, OHLCV, technical evidence and company fundamentals read from Supabase. Tavily performs exchange-aware Vietnamese web search and Gemini 3.6 synthesizes cited source excerpts into a four-group indicator-to-decision matrix. Missing metrics remain explicitly unavailable. The scheduled job refreshes the default universe plus recently researched symbols, so HOSE, HNX and UPCOM searches do not require a workflow run per request.
+Stock search, OHLCV, technical evidence and synchronized company fundamentals read from Supabase. The Live Internet Financial Research Agent runs when an analysis opens: Tavily discovers current Vietnamese financial sources, Tavily Extract reads bounded page/report content, and Gemini extracts source-bound facts before synthesizing the cited four-group decision matrix. A public PDF up to 8 MB may also be read natively by Gemini after HTTPS, DNS, redirect and file-signature checks. Facts retain their reporting period, unit, source index, page and evidence; missing or unsupported metrics remain explicitly unavailable.
+
+Live research is cache-first for 60 minutes and deduplicated per symbol. “Nghiên cứu lại” bypasses the source cache, while the daily free-tier budget and stale-report fallback keep the structured dashboard available if Tavily or Gemini is unavailable. Only bounded extracted text and provenance are cached; the application does not store complete articles or PDFs.
 
 See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets.

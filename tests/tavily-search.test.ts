@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { searchFinancialWeb, searchSectorWeb } from "../lib/tavily-search.ts";
+import { extractFinancialWeb, searchFinancialWeb, searchSectorWeb } from "../lib/tavily-search.ts";
 
 test("normalizes Vietnamese exchange-aware Tavily results", async () => {
   const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
@@ -9,7 +9,7 @@ test("normalizes Vietnamese exchange-aware Tavily results", async () => {
     assert.match(request.query, /MBS/);
     assert.match(request.query, /HNX/);
     assert.equal(request.search_depth, "basic");
-    assert.equal(request.max_results, 5);
+    assert.equal(request.max_results, 6);
     assert.equal(request.chunks_per_source, 1);
     return Response.json({ results: [{
       title: "FPT reports quarterly growth",
@@ -24,6 +24,23 @@ test("normalizes Vietnamese exchange-aware Tavily results", async () => {
   if (result.ok) {
     assert.equal(result.results[0].source, "example.com");
     assert.equal(result.results[0].publishedAt, "2026-08-27");
+  }
+});
+
+test("extracts bounded full-page financial content from discovered URLs", async () => {
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const request = JSON.parse(String(init?.body));
+    assert.equal(request.extract_depth, "basic");
+    assert.equal(request.chunks_per_source, 5);
+    assert.deepEqual(request.urls, ["https://example.com/mbs.pdf"]);
+    return Response.json({ results: [{ url: "https://example.com/mbs.pdf", raw_content: "Doanh thu quý II và lợi nhuận sau thuế." }] });
+  }) as typeof fetch;
+  const result = await extractFinancialWeb({ apiKey: "tvly-test", symbol: "MBS", sources: [{ title: "BCTC MBS", url: "https://example.com/mbs.pdf", content: "excerpt", publishedAt: null, source: "example.com", documentType: "pdf" }], fetchImpl });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.match(result.results[0].content, /lợi nhuận sau thuế/);
+    assert.equal(result.results[0].documentType, "pdf");
+    assert.ok(result.results[0].retrievedAt);
   }
 });
 

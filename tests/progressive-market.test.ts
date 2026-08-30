@@ -11,7 +11,7 @@ function snapshot(overrides: Partial<CurrentMarketSnapshot> = {}): CurrentMarket
     previous_close: 100_000,
     price_provider_timestamp: "2026-08-28T15:00:00+07:00",
     price_fetched_at: "2026-08-28T08:15:00Z",
-    price_expires_at: "2026-08-30T00:00:00Z",
+    price_expires_at: "2099-08-30T00:00:00Z",
     price_source_name: "vnstock-community-v4",
     price_source_url: null,
     price_data_quality: "eod",

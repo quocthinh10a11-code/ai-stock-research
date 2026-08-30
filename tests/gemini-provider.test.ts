@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configuredGeminiModels, requestGroundedGemini, requestSynthesisGemini } from "../lib/gemini-provider.ts";
+import { configuredGeminiModels, requestFinancialFactsGemini, requestGroundedGemini, requestSynthesisGemini } from "../lib/gemini-provider.ts";
 
 test("uses free grounded 2.5 models by default", () => {
   assert.deepEqual(configuredGeminiModels({ NODE_ENV: "test" }), ["gemini-2.5-flash-lite", "gemini-2.5-flash"]);
@@ -74,4 +74,17 @@ test("does not misreport a network failure as a synthesis timeout", async () => 
   const result = await requestSynthesisGemini({ apiKey: "test-key", prompt: "source snippets", fetchImpl });
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.error.message, /could not reach/i);
+});
+
+test("sends a PDF inline only to the financial fact extraction request", async () => {
+  let requestBody: { contents?: Array<{ parts?: Array<Record<string, unknown>> }> } = {};
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    requestBody = JSON.parse(String(init?.body));
+    return Response.json({ candidates: [] });
+  }) as typeof fetch;
+  const result = await requestFinancialFactsGemini({ apiKey: "test-key", prompt: "extract", pdfBytes: new TextEncoder().encode("%PDF-test"), fetchImpl });
+  assert.equal(result.ok, true);
+  const parts = requestBody.contents?.[0]?.parts ?? [];
+  assert.equal(parts.length, 2);
+  assert.equal((parts[1].inline_data as Record<string, unknown>).mime_type, "application/pdf");
 });

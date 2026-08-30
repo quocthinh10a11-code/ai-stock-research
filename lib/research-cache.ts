@@ -30,6 +30,7 @@ export function hashWebSources(sources: WebResearchSource[]) {
     content: source.content,
     publishedAt: source.publishedAt,
     source: source.source,
+    documentType: source.documentType,
   })));
 }
 
@@ -53,9 +54,11 @@ export function parseWebSources(value: unknown): WebResearchSource[] {
     return [{
       title: String(source.title ?? "").slice(0, 300),
       url,
-      content: String(source.content ?? "").slice(0, 700),
+      content: String(source.content ?? "").slice(0, 16_000),
       publishedAt: source.publishedAt == null ? null : String(source.publishedAt),
       source: String(source.source ?? "").slice(0, 200),
+      documentType: source.documentType === "pdf" ? "pdf" : "html",
+      retrievedAt: source.retrievedAt == null ? undefined : String(source.retrievedAt),
     }];
   });
 }

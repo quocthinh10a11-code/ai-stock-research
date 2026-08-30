@@ -1,12 +1,13 @@
 export interface EvidenceItem { label: string; value: string; detail: string; tone?: "positive" | "negative" | "neutral"; }
 export interface FinancialPeriod { period: string; periodEnd: ISODate; revenue: number | null; grossProfit: number | null; operatingProfit: number | null; profitBeforeTax: number | null; netProfit: number | null; eps: number | null; totalAssets: number | null; totalLiabilities: number | null; equity: number | null; operatingCashFlow: number | null; unit: string; }
 export interface RelatedStock { symbol: string; company: string; exchange: string; price: number | null; change: number | null; }
-export interface ResearchCitation { title: string; url: string; source?: string; publishedAt?: string | null; insight?: string; sentiment?: "positive" | "negative" | "neutral"; }
+export interface FinancialResearchFact { metric: string; label: string; value: string; period: string | null; unit: string | null; sourceIndex: number; page: number | null; evidence: string; confidence: "medium" | "high"; }
+export interface ResearchCitation { title: string; url: string; source?: string; publishedAt?: string | null; insight?: string; sentiment?: "positive" | "negative" | "neutral"; documentType?: "html" | "pdf"; facts?: FinancialResearchFact[]; }
 export interface TrendForecast { horizon: "1M" | "3M" | "6M"; direction: MarketBias; bullishProbability: number; neutralProbability: number; bearishProbability: number; rationale: string; }
 export type InvestmentAction = "buy" | "accumulate" | "hold" | "reduce" | "sell" | "insufficient_data";
 export interface InvestmentMetric { name: string; value: string | null; trend: string | null; sourceIndices: number[]; }
 export interface InvestmentDecisionRow { group: "business_performance" | "valuation" | "financial_health" | "risk_momentum"; title: string; metrics: InvestmentMetric[]; analysis: string; action: InvestmentAction; confidence: "low" | "medium" | "high"; rationale: string; }
-export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; asOf: string; expiresAt: string; cached: boolean; model: string; }
+export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; facts: FinancialResearchFact[]; warnings: string[]; asOf: string; expiresAt: string; cached: boolean; model: string; }
 export type FreshnessKind = "market" | "technical" | "fundamentals" | "disclosures" | "sector" | "ai";
 export type FreshnessStatus = "Live" | "Delayed" | "EOD" | "Cached" | "Stale";
 export type MarketSession = "open" | "closed";

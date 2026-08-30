@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:gemini": "node --experimental-strip-types --test tests/gemini-provider.test.ts tests/tavily-search.test.ts tests/research-report.test.ts tests/research-cache.test.ts",
+    "test:gemini": "node --experimental-strip-types --test tests/gemini-provider.test.ts tests/tavily-search.test.ts tests/live-financial-research.test.ts tests/research-report.test.ts tests/research-cache.test.ts",
     "test:discover": "node --experimental-strip-types --test tests/sector-rankings.test.ts",
     "test:freshness": "node --experimental-strip-types --test tests/freshness.test.ts",
     "test:refresh": "node --experimental-strip-types --test tests/refresh-contract.test.ts tests/progressive-market.test.ts",

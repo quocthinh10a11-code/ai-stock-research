@@ -15,6 +15,8 @@ type SynthesisGeminiResult =
   | { ok: true; model: string; response: Response }
   | { ok: false; error: ProviderError };
 
+type FinancialFactsGeminiResult = SynthesisGeminiResult;
+
 function uniqueModels(models: string[]) {
   return [...new Set(models.map((model) => model.trim()).filter(Boolean))];
 }
@@ -181,5 +183,47 @@ export async function requestSynthesisGemini({
     ok: false,
     error: { httpStatus: 429, providerStatus: 429, detail, message: "Gemini's free text-generation quota is exhausted. Retry after the quota resets." },
   };
+  return { ok: false, error: providerMessage(response.status, detail) };
+}
+
+export async function requestFinancialFactsGemini({
+  apiKey,
+  prompt,
+  pdfBytes,
+  model = process.env.GEMINI_SYNTHESIS_MODEL ?? "gemini-3.6-flash",
+  fetchImpl = fetch,
+}: {
+  apiKey: string;
+  prompt: string;
+  pdfBytes?: Uint8Array;
+  model?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<FinancialFactsGeminiResult> {
+  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  if (pdfBytes?.byteLength) {
+    parts.push({ inline_data: { mime_type: "application/pdf", data: Buffer.from(pdfBytes).toString("base64") } });
+  }
+  let response: Response;
+  try {
+    response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: "application/json",
+          maxOutputTokens: 4_096,
+          thinkingConfig: { thinkingLevel: "minimal" },
+        },
+      }),
+      signal: AbortSignal.timeout(65_000),
+    });
+  } catch (caught) {
+    const detail = caught instanceof Error ? `${caught.name}: ${caught.message}` : String(caught);
+    return { ok: false, error: { httpStatus: 502, providerStatus: null, detail, message: "Không thể đọc báo cáo tài chính bằng Gemini trong thời gian cho phép." } };
+  }
+  if (response.ok) return { ok: true, model, response };
+  const detail = (await response.text()).slice(0, 1_500);
   return { ok: false, error: providerMessage(response.status, detail) };
 }
