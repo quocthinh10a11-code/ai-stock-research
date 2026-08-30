@@ -4,6 +4,9 @@ from __future__ import annotations
 import os
 import re
 import time
+import hashlib
+import json
+import unicodedata
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -82,6 +85,11 @@ ALIASES = {
     "operating_cash_flow": ("net_cash_flows_from_operating_activities", "net_cash_flow_from_operating_activities"),
 }
 
+MONETARY_FIELDS = {
+    "revenue", "gross_profit", "operating_profit", "profit_before_tax", "net_profit",
+    "total_assets", "total_liabilities", "equity", "operating_cash_flow",
+}
+
 
 def normalize_id(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(value).lower()).strip("_")
@@ -89,6 +97,69 @@ def normalize_id(value: Any) -> str:
 
 def normalize_financial_item_id(value: Any) -> str:
     return re.sub(r"^(?:[ivxlcdm]+|\d+)_", "", normalize_id(value))
+
+
+def monetary_multiplier(unit: str) -> float | None:
+    raw = str(unit).strip().casefold()
+    normalized = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode("ascii")
+    if normalized in {"vnd", "dong"}:
+        return 1.0
+    if any(marker in normalized for marker in ("million", "trieu")):
+        return 1_000_000.0
+    if any(marker in normalized for marker in ("billion", "ty")):
+        return 1_000_000_000.0
+    if any(marker in normalized for marker in ("thousand", "nghin")):
+        return 1_000.0
+    return None
+
+
+def normalize_monetary_values(
+    values: dict[str, dict[str, float | None]], unit: str
+) -> tuple[dict[str, dict[str, float | None]], str]:
+    multiplier = monetary_multiplier(unit)
+    if multiplier is None:
+        return values, unit
+    normalized: dict[str, dict[str, float | None]] = {}
+    for period, metrics in values.items():
+        normalized[period] = {
+            metric: value * multiplier if metric in MONETARY_FIELDS and value is not None else value
+            for metric, value in metrics.items()
+        }
+    return normalized, "VND"
+
+
+def validate_financial_periods(rows: list[dict[str, Any]]) -> str:
+    """Reject structurally impossible statements; otherwise report verified/partial completeness."""
+    if not rows:
+        raise RuntimeError("provider returned no financial periods")
+    strongest_metric_count = 0
+    for row in rows:
+        if not row.get("period_end"):
+            raise RuntimeError(f"invalid financial period: {row.get('period_label')}")
+        assets = row.get("total_assets")
+        liabilities = row.get("total_liabilities")
+        equity = row.get("equity")
+        if assets is not None and assets <= 0:
+            raise RuntimeError(f"non-positive total assets in {row['period_label']}")
+        if liabilities is not None and liabilities < 0:
+            raise RuntimeError(f"negative total liabilities in {row['period_label']}")
+        if assets is not None and liabilities is not None and equity is not None:
+            tolerance = max(abs(float(assets)) * 0.05, 1_000_000.0)
+            if abs(float(assets) - float(liabilities) - float(equity)) > tolerance:
+                raise RuntimeError(f"balance sheet identity mismatch in {row['period_label']}")
+        strongest_metric_count = max(
+            strongest_metric_count,
+            sum(row.get(field) is not None for field in (*MONETARY_FIELDS, "eps")),
+        )
+    return "verified" if strongest_metric_count >= 6 else "partial"
+
+
+def financial_content_hash(row: dict[str, Any]) -> str:
+    payload = {
+        key: row.get(key)
+        for key in ("symbol", "period_type", "period_label", "period_end", "unit", "source_name", *sorted(MONETARY_FIELDS), "eps")
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
 def period_end_date(label: str) -> str | None:
@@ -208,6 +279,7 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
             unit = "reported unit"
             for frame in frames:
                 periods, values, frame_unit = report_values(frame)
+                values, frame_unit = normalize_monetary_values(values, frame_unit)
                 unit = frame_unit if unit == "reported unit" else unit
                 for period in periods:
                     if period not in period_order:
@@ -225,12 +297,13 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                 "fetched_at": fetched_at.isoformat(),
                 "expires_at": (fetched_at + timedelta(days=7)).isoformat(),
                 "source_name": f"vnstock-community/{source.lower()}",
-                "data_quality": "partial",
                 "refresh_status": "ready",
                 **combined[period],
             } for period in period_order[:20]]
-            if not rows:
-                raise RuntimeError("provider returned no financial periods")
+            data_quality = validate_financial_periods(rows)
+            for row in rows:
+                row["data_quality"] = data_quality
+                row["content_hash"] = financial_content_hash(row)
             client.upsert("financial_periods", rows, "symbol,period_type,period_label")
             return len(rows), source
         except Exception as error:

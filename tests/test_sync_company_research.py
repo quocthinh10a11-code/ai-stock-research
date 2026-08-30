@@ -4,10 +4,26 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from scripts.sync_company_research import all_exchange_listings, kbs_report_frame, listing_rows, main, report_values, sync_fundamentals
+from scripts.sync_company_research import all_exchange_listings, kbs_report_frame, listing_rows, main, normalize_monetary_values, report_values, sync_fundamentals, validate_financial_periods
 
 
 class CompanyListingTests(unittest.TestCase):
+    def test_vnd_million_values_are_normalized_but_eps_is_not_scaled(self):
+        values, unit = normalize_monetary_values({
+            "2025-Q4": {"revenue": 3_830_762.0, "net_profit": 2_259_937.0, "eps": 1_234.0}
+        }, "VND million")
+
+        self.assertEqual(unit, "VND")
+        self.assertEqual(values["2025-Q4"]["revenue"], 3_830_762_000_000.0)
+        self.assertEqual(values["2025-Q4"]["net_profit"], 2_259_937_000_000.0)
+        self.assertEqual(values["2025-Q4"]["eps"], 1_234.0)
+
+    def test_impossible_balance_sheet_is_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "balance sheet identity mismatch"):
+            validate_financial_periods([{
+                "period_label": "2025-Q4", "period_end": "2025-12-31",
+                "total_assets": 100_000_000.0, "total_liabilities": 20_000_000.0, "equity": 20_000_000.0,
+            }])
     def test_kbs_duplicate_periods_keep_last_consolidated_value(self):
         finance = MagicMock()
         finance._provider._fetch_financial_data.return_value = {
@@ -161,7 +177,9 @@ class CompanyListingTests(unittest.TestCase):
         self.assertEqual(rows[0]["refresh_status"], "ready")
         self.assertIn("fetched_at", rows[0])
         self.assertIn("expires_at", rows[0])
-        self.assertEqual(rows[0]["revenue"], 10.0)
+        self.assertEqual(rows[0]["revenue"], 10_000_000.0)
+        self.assertEqual(rows[0]["unit"], "VND")
+        self.assertEqual(len(rows[0]["content_hash"]), 64)
 
 
 if __name__ == "__main__":
