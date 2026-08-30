@@ -3,6 +3,7 @@ import { getAnalysis } from "@/lib/data/get-analysis";
 import { requestFinancialFactsGemini, requestGroundedGemini } from "@/lib/gemini-provider";
 import { normalizeFinancialFacts, runLiveFinancialResearch, type LiveFinancialFact } from "@/lib/live-financial-research";
 import { normalizeStockSymbol } from "@/lib/market-universe";
+import { buildPredictionRows } from "@/lib/prediction-log";
 import { hashResearchInput, hashWebSources, isFreshIso, parseWebSources } from "@/lib/research-cache";
 import { normalizeDecisionMatrix } from "@/lib/research-report";
 import { fetchPublicPdf } from "@/lib/safe-document-fetch";
@@ -234,6 +235,28 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
       data_quality: "verified-sources", refresh_status: "ready",
     }, { onConflict: "symbol,input_hash" });
     if (cacheError) console.error("AI research cache write failed", { symbol, message: cacheError.message });
+    if (analysis.price != null) {
+      const { data: evidenceSnapshot } = await admin.from("evidence_snapshots")
+        .select("id")
+        .eq("symbol", symbol)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (evidenceSnapshot) {
+        const predictionRows = buildPredictionRows({
+          symbol,
+          asOf,
+          entryPrice: analysis.price,
+          evidenceSnapshotId: Number(evidenceSnapshot.id),
+          inputHash,
+          forecasts: report.forecasts,
+        });
+        const { error: predictionError } = await admin.from("prediction_log").upsert(predictionRows, {
+          onConflict: "symbol,prediction_date,target_check_date",
+        });
+        if (predictionError) console.error("Prediction log write failed", { symbol, message: predictionError.message });
+      }
+    }
     if (refreshedSourceHash) {
       const { error: sourceCacheError } = await admin.from("web_source_cache").upsert({ cache_key: `stock-live-v2:${symbol}`, sources_json: webSources, content_hash: refreshedSourceHash, fetched_at: asOf, expires_at: sourceExpiry, source_name: "tavily-extract", last_error: null, updated_at: asOf });
       if (sourceCacheError) console.error("Web source cache write failed", { symbol, message: sourceCacheError.message });

@@ -1,0 +1,28 @@
+name: Evaluate matured AI predictions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 19:07 Asia/Ho_Chi_Minh, after the 17:47 EOD market refresh has settled.
+    - cron: "7 12 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluate-matured-ai-predictions
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python scripts/evaluate_predictions.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
