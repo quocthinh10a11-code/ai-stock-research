@@ -65,12 +65,22 @@ class CompanyListingTests(unittest.TestCase):
     def test_lower_priority_revenue_alias_cannot_overwrite_canonical_revenue(self):
         frame = pd.DataFrame([
             {"item_id": "revenue", "2025-Q4": 900.0},
-            {"item_id": "net_revenue", "2025-Q4": -24.0},
+            {"item_id": "operating_sales", "2025-Q4": -24.0},
         ])
 
         _, values, _ = report_values(frame)
 
         self.assertEqual(values["2025-Q4"]["revenue"], 900.0)
+
+    def test_vci_net_sales_and_operating_sales_map_to_revenue(self):
+        company = pd.DataFrame([{"item_id": "net_sales", "2025-Q4": 1_200.0}])
+        securities = pd.DataFrame([{"item_id": "operating_sales", "2025-Q4": 800.0}])
+
+        _, company_values, _ = report_values(company)
+        _, securities_values, _ = report_values(securities)
+
+        self.assertEqual(company_values["2025-Q4"]["revenue"], 1_200.0)
+        self.assertEqual(securities_values["2025-Q4"]["revenue"], 800.0)
 
     def test_contradictory_negative_revenue_is_withheld_instead_of_presented_as_total(self):
         rows = [{

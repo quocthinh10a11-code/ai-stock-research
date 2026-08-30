@@ -73,7 +73,7 @@ def all_exchange_listings(listing: Listing) -> pd.DataFrame:
 
 
 ALIASES = {
-    "revenue": ("revenue", "net_revenue", "net_interest_income"),
+    "revenue": ("net_sales", "net_revenue", "revenue", "operating_sales", "net_interest_income"),
     "gross_profit": ("gross_profit", "gross_profit_from_sales_and_services", "total_operating_income"),
     "operating_profit": ("operating_profit", "operating_income", "net_operating_profit", "operating_profit_before_provision_for_credit_losses", "net_operating_profit_before_allowance_for_credit_loss"),
     "profit_before_tax": ("profit_before_tax", "taxable_profit", "net_accounting_profit_loss_before_tax"),
