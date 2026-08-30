@@ -133,12 +133,19 @@ def validate_financial_periods(rows: list[dict[str, Any]]) -> str:
     if not rows:
         raise RuntimeError("provider returned no financial periods")
     strongest_metric_count = 0
+    had_warning = False
     for row in rows:
         if not row.get("period_end"):
             raise RuntimeError(f"invalid financial period: {row.get('period_label')}")
         assets = row.get("total_assets")
         liabilities = row.get("total_liabilities")
         equity = row.get("equity")
+        revenue = row.get("revenue")
+        gross_profit = row.get("gross_profit")
+        net_profit = row.get("net_profit")
+        if revenue is not None and revenue <= 0 and gross_profit is not None and gross_profit > 0 and net_profit is not None and net_profit > 0:
+            row["revenue"] = None
+            had_warning = True
         if assets is not None and assets <= 0:
             raise RuntimeError(f"non-positive total assets in {row['period_label']}")
         if liabilities is not None and liabilities < 0:
@@ -151,7 +158,7 @@ def validate_financial_periods(rows: list[dict[str, Any]]) -> str:
             strongest_metric_count,
             sum(row.get(field) is not None for field in (*MONETARY_FIELDS, "eps")),
         )
-    return "verified" if strongest_metric_count >= 6 else "partial"
+    return "verified" if strongest_metric_count >= 6 and not had_warning else "partial"
 
 
 def financial_content_hash(row: dict[str, Any]) -> str:
@@ -183,6 +190,7 @@ def report_values(frame: pd.DataFrame) -> tuple[list[str], dict[str, dict[str, f
     period_columns = [column for column in frame.columns if str(column) not in metadata]
     periods = [str(column) for column in period_columns]
     values: dict[str, dict[str, float | None]] = {period: {} for period in periods}
+    selected_alias_rank: dict[str, dict[str, int]] = {period: {} for period in periods}
     operating_expenses: dict[str, float] = {}
     unit = "reported unit"
     for record in frame.to_dict("records"):
@@ -190,11 +198,20 @@ def report_values(frame: pd.DataFrame) -> tuple[list[str], dict[str, dict[str, f
         if record.get("unit") and unit == "reported unit":
             unit = str(record["unit"])
         for target, aliases in ALIASES.items():
-            if item_id in aliases or any(re.fullmatch(rf"{re.escape(alias)}_\d+", item_id) for alias in aliases):
+            alias_rank = next((
+                index for index, alias in enumerate(aliases)
+                if item_id == alias or re.fullmatch(rf"{re.escape(alias)}_\d+", item_id)
+            ), None)
+            if alias_rank is not None:
                 for period_column, period in zip(period_columns, periods):
                     raw = record.get(period_column)
                     number = pd.to_numeric(raw, errors="coerce")
-                    values[period][target] = None if pd.isna(number) else float(number)
+                    if pd.isna(number):
+                        continue
+                    previous_rank = selected_alias_rank[period].get(target)
+                    if previous_rank is None or alias_rank < previous_rank:
+                        values[period][target] = float(number)
+                        selected_alias_rank[period][target] = alias_rank
         if item_id == "operating_expenses":
             for period_column, period in zip(period_columns, periods):
                 number = pd.to_numeric(record.get(period_column), errors="coerce")

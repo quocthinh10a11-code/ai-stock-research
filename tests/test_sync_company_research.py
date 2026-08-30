@@ -62,6 +62,29 @@ class CompanyListingTests(unittest.TestCase):
         self.assertEqual(values["2025-Q4"]["net_profit"], 2_259.0)
         self.assertNotIn("operating_profit", values["2025-Q4"])
 
+    def test_lower_priority_revenue_alias_cannot_overwrite_canonical_revenue(self):
+        frame = pd.DataFrame([
+            {"item_id": "revenue", "2025-Q4": 900.0},
+            {"item_id": "net_revenue", "2025-Q4": -24.0},
+        ])
+
+        _, values, _ = report_values(frame)
+
+        self.assertEqual(values["2025-Q4"]["revenue"], 900.0)
+
+    def test_contradictory_negative_revenue_is_withheld_instead_of_presented_as_total(self):
+        rows = [{
+            "period_label": "2025-Q4", "period_end": "2025-12-31",
+            "revenue": -24_000_000_000.0,
+            "gross_profit": 705_000_000_000.0,
+            "net_profit": 308_000_000_000.0,
+        }]
+
+        quality = validate_financial_periods(rows)
+
+        self.assertIsNone(rows[0]["revenue"])
+        self.assertEqual(quality, "partial")
+
     def test_bank_total_operating_income_is_derived_from_report_lines(self):
         frame = pd.DataFrame([
             {"item_id": "VIII. Operating expenses", "2025-Q4": 2_107_960.0},
