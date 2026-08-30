@@ -149,9 +149,9 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
     const { error: finishError } = await admin.rpc("complete_research_run", { p_run_id: run.run_id, p_owner_token: run.owner_token, p_succeeded: succeeded, p_error: error ?? null });
     if (finishError) console.error("Research run completion failed", { symbol, message: finishError.message });
   };
-  const defaultLimit = tavilyKey ? 15 : 450;
+  const defaultLimit = tavilyKey ? 10 : 450;
   const configuredLimit = Number(process.env.AI_DAILY_REQUEST_LIMIT ?? defaultLimit);
-  const dailyLimit = Number.isInteger(configuredLimit) && configuredLimit > 0 ? Math.min(configuredLimit, tavilyKey ? 15 : 500) : defaultLimit;
+  const dailyLimit = Number.isInteger(configuredLimit) && configuredLimit > 0 ? Math.min(configuredLimit, tavilyKey ? 10 : 500) : defaultLimit;
   const { data: reserved, error: quotaError } = await admin.rpc("reserve_ai_research_budget", { p_limit: dailyLimit, p_kind: "stock" });
   if (quotaError || !reserved) {
     await finish(false, quotaError?.message ?? "daily quota exhausted");

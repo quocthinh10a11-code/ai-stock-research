@@ -89,9 +89,29 @@ export async function runLiveFinancialResearch({
   company: string;
   exchange: string;
 }): Promise<LiveFinancialResearchResult> {
-  const search = await searchFinancialWeb({ apiKey: tavilyKey, symbol, company, exchange });
-  if (!search.ok) return { ok: false, status: [429, 432, 433].includes(search.status ?? 0) ? 429 : 502, message: search.message, detail: search.detail };
-  const entitySources = filterEntitySources(search.results, symbol, company, exchange);
+  const [statementsSearch, metricsSearch] = await Promise.all([
+    searchFinancialWeb({ apiKey: tavilyKey, symbol, company, exchange, intent: "statements" }),
+    searchFinancialWeb({ apiKey: tavilyKey, symbol, company, exchange, intent: "metrics" }),
+  ]);
+  if (!statementsSearch.ok && !metricsSearch.ok) {
+    return { ok: false, status: [429, 432, 433].includes(statementsSearch.status ?? 0) ? 429 : 502, message: statementsSearch.message, detail: statementsSearch.detail };
+  }
+  const successfulSearches = [];
+  if (statementsSearch.ok) successfulSearches.push(statementsSearch);
+  if (metricsSearch.ok) successfulSearches.push(metricsSearch);
+  const merged = new Map<string, WebResearchSource>();
+  const maxResults = Math.max(...successfulSearches.map((result) => result.results.length));
+  for (let index = 0; index < maxResults; index += 1) {
+    for (const result of successfulSearches) {
+      const source = result.results[index];
+      if (source && !merged.has(source.url)) merged.set(source.url, source);
+    }
+  }
+  if (exchange === "HNX") {
+    const officialUrl = `https://chonds.hnx.vn/vi-vn/cophieu-etfs/chi-tiet-chung-khoan-ny-${symbol.toLowerCase()}.html`;
+    if (!merged.has(officialUrl)) merged.set(officialUrl, { title: `${symbol} — ${company} | HNX`, url: officialUrl, content: `${symbol} ${company} ${exchange} công bố thông tin báo cáo tài chính`, publishedAt: null, source: "chonds.hnx.vn", documentType: "html" });
+  }
+  const entitySources = filterEntitySources([...merged.values()], symbol, company, exchange);
   if (!entitySources.length) return { ok: false, status: 404, message: `Không tìm thấy nguồn tài chính đúng thực thể ${symbol}.`, detail: "No entity-matched search results" };
 
   const warnings: string[] = [];

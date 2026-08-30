@@ -53,6 +53,16 @@ test("classifies exhausted Tavily free quota", async () => {
   if (!result.ok) assert.match(result.message, /quota/i);
 });
 
+test("uses a separate compact query for live valuation metrics", async () => {
+  const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+    const request = JSON.parse(String(init?.body));
+    assert.match(request.query, /P\/E P\/B EPS ROE/);
+    return Response.json({ results: [] });
+  }) as typeof fetch;
+  const result = await searchFinancialWeb({ apiKey: "tvly-test", symbol: "MBS", company: "CTCP Chứng khoán MB", exchange: "HNX", intent: "metrics", fetchImpl });
+  assert.equal(result.ok, true);
+});
+
 test("searches fresh sector news for the screened symbols", async () => {
   const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body));

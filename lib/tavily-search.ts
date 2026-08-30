@@ -38,12 +38,14 @@ export async function searchFinancialWeb({
   symbol,
   company,
   exchange,
+  intent = "statements",
   fetchImpl = fetch,
 }: {
   apiKey: string;
   symbol: string;
   company: string;
   exchange: string;
+  intent?: "statements" | "metrics";
   fetchImpl?: typeof fetch;
 }): Promise<TavilySearchResult> {
   let response: Response;
@@ -52,7 +54,9 @@ export async function searchFinancialWeb({
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: `"${symbol}" "${company}" ${exchange} báo cáo tài chính BCTC PDF trang chứng khoán mới nhất EPS ROE P/E P/B nợ vốn chủ sở hữu cổ tức`,
+        query: intent === "statements"
+          ? `"${symbol}" "${company}" ${exchange} báo cáo tài chính mới nhất PDF`
+          : `"${symbol}" "${company}" ${exchange} P/E P/B EPS ROE cổ tức chỉ số tài chính`,
         search_depth: "basic",
         chunks_per_source: 1,
         max_results: 6,

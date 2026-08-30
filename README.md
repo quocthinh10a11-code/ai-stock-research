@@ -28,7 +28,7 @@ GEMINI_API_KEY=your-google-ai-studio-key
 GEMINI_MODELS=gemini-2.5-flash-lite,gemini-2.5-flash
 GEMINI_SYNTHESIS_MODEL=gemini-3.6-flash
 TAVILY_API_KEY=your-free-tavily-key
-AI_DAILY_REQUEST_LIMIT=15
+AI_DAILY_REQUEST_LIMIT=10
 ```
 
 `GEMINI_MODEL` remains a supported legacy singular fallback when `GEMINI_MODELS` is not set. Tavily retrieval plus `GEMINI_SYNTHESIS_MODEL` is the primary path.
@@ -50,6 +50,6 @@ AI_DAILY_REQUEST_LIMIT=15
 
 Stock search, OHLCV, technical evidence and synchronized company fundamentals read from Supabase. The Live Internet Financial Research Agent runs when an analysis opens: Tavily discovers current Vietnamese financial sources, Tavily Extract reads bounded page/report content, and one structured Gemini inference extracts source-bound facts together with the cited four-group decision matrix. A public PDF up to 8 MB may also be read natively by Gemini after HTTPS, DNS, redirect and file-signature checks. Facts retain their reporting period, unit, source index, page and evidence; missing or unsupported metrics remain explicitly unavailable.
 
-Live research is cache-first for 60 minutes and deduplicated per symbol. “Nghiên cứu lại” bypasses the source cache, while the free-safe global cap of 15 new AI runs per UTC day and stale-report fallback keep the structured dashboard available if Tavily or Gemini is unavailable. The cap remains 15 even if a larger environment value is configured because a live stock run can consume both one Search and one Extract credit. Only bounded extracted text and provenance are cached; the application does not store complete articles or PDFs.
+Live research is cache-first for 60 minutes and deduplicated per symbol. “Nghiên cứu lại” bypasses the source cache, while the free-safe global cap of 10 new AI runs per UTC day and stale-report fallback keep the structured dashboard available if Tavily or Gemini is unavailable. The cap remains 10 even if a larger environment value is configured because a live stock run can consume two focused Search credits and one Extract credit. Only bounded extracted text and provenance are cached; the application does not store complete articles or PDFs.
 
 See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets.
