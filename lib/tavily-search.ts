@@ -68,7 +68,7 @@ export async function searchFinancialWeb({
         include_usage: true,
         auto_parameters: false,
         safe_search: true,
-        exclude_domains: ["facebook.com", "reddit.com", "seekingalpha.com", "youtube.com", "tiktok.com", "x.com", "twitter.com"],
+        exclude_domains: ["facebook.com", "reddit.com", "seekingalpha.com", "finance.yahoo.com", "youtube.com", "tiktok.com", "x.com", "twitter.com"],
       }),
       signal: AbortSignal.timeout(15_000),
     });

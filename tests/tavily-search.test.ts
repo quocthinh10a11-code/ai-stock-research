@@ -12,6 +12,7 @@ test("normalizes Vietnamese exchange-aware Tavily results", async () => {
     assert.equal(request.max_results, 6);
     assert.equal(request.chunks_per_source, 1);
     assert.ok(request.exclude_domains.includes("facebook.com"));
+    assert.ok(request.exclude_domains.includes("finance.yahoo.com"));
     return Response.json({ results: [{
       title: "FPT reports quarterly growth",
       url: "https://example.com/fpt-results",

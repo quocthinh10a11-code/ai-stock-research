@@ -4,10 +4,60 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from scripts.sync_company_research import all_exchange_listings, listing_rows, main, sync_fundamentals
+from scripts.sync_company_research import all_exchange_listings, kbs_report_frame, listing_rows, main, report_values, sync_fundamentals
 
 
 class CompanyListingTests(unittest.TestCase):
+    def test_kbs_duplicate_periods_keep_last_consolidated_value(self):
+        finance = MagicMock()
+        finance._provider._fetch_financial_data.return_value = {
+            "Head": [
+                {"YearPeriod": 2026, "TermCode": "Q2"},
+                {"YearPeriod": 2026, "TermCode": "Q1"},
+                {"YearPeriod": 2025, "TermCode": "Q4"},
+                {"YearPeriod": 2025, "TermCode": "Q4"},
+                {"YearPeriod": 2025, "TermCode": "Q4"},
+                {"YearPeriod": 2025, "TermCode": "Q3"},
+            ],
+            "Content": {"Kết quả kinh doanh": [{
+                "Name": "I. Thu nhập lãi thuần", "NameEn": "I. Net Interest Income",
+                "Value1": 6_708_726, "Value2": 5_497_241, "Value3": 187_363,
+                "Value4": 5_543_669, "Value5": 3_830_762, "Value6": 5_323_821,
+            }]},
+        }
+
+        frame = kbs_report_frame(finance, "income_statement")
+        periods, values, unit = report_values(frame)
+
+        self.assertEqual(periods, ["2026-Q2", "2026-Q1", "2025-Q4", "2025-Q3"])
+        self.assertEqual(values["2025-Q4"]["revenue"], 3_830_762_000.0)
+        self.assertEqual(unit, "VND")
+
+    def test_bank_profit_aliases_are_mapped_without_suffix_false_positives(self):
+        frame = pd.DataFrame([
+            {"item_id": "total_operating_income", "2025-Q4": 6_200.0},
+            {"item_id": "net_profit_loss_after_tax", "2025-Q4": 2_259.0},
+            {"item_id": "unrelated_operating_income_note", "2025-Q4": 99.0},
+        ])
+
+        _, values, _ = report_values(frame)
+
+        self.assertEqual(values["2025-Q4"]["gross_profit"], 6_200.0)
+        self.assertEqual(values["2025-Q4"]["net_profit"], 2_259.0)
+        self.assertNotIn("operating_profit", values["2025-Q4"])
+
+    def test_bank_total_operating_income_is_derived_from_report_lines(self):
+        frame = pd.DataFrame([
+            {"item_id": "VIII. Operating expenses", "2025-Q4": 2_107_960.0},
+            {"item_id": "IX. Operating profit before provision for credit losses", "2025-Q4": 3_685_231.0},
+            {"item_id": "XIII. Net profit after tax", "2025-Q4": 2_259_937.0},
+        ])
+
+        _, values, _ = report_values(frame)
+
+        self.assertEqual(values["2025-Q4"]["gross_profit"], 5_793_191.0)
+        self.assertEqual(values["2025-Q4"]["net_profit"], 2_259_937.0)
+
     def test_combines_exchange_payloads_when_provider_omits_exchange_column(self):
         listing = MagicMock()
         listing.symbols_by_exchange.side_effect = [

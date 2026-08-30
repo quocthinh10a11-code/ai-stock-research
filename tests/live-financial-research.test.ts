@@ -47,3 +47,13 @@ test("keeps MBS entity sources and rejects pages that only mention MBS as a rese
   ], "MBS", "CTCP Chứng khoán MB", "HNX");
   assert.deepEqual(filtered.map((item) => item.url), ["https://www.mbs.com.vn/bao-cao-tai-chinh-quy-2-2026/", "https://hnx.vn/report"]);
 });
+
+test("rejects US ticker collisions and wrong exchange labels", () => {
+  const source = (title: string, url: string, content: string) => ({ title, url, content, publishedAt: null, source: new URL(url).hostname, documentType: "html" as const });
+  const filtered = filterEntitySources([
+    source("SHB: Safe Harbor Financial Results", "https://finance.yahoo.com/shb", "Safe Harbor Financial"),
+    source("SHB Giá cổ phiếu — HOSE:SHB", "https://tradingview.com/shb", "Ngân hàng TMCP Sài Gòn - Hà Nội"),
+    source("SHB — HNX:SHB", "https://example.com/shb", "Ngân hàng TMCP Sài Gòn - Hà Nội"),
+  ], "SHB", "Ngân hàng TMCP Sài Gòn - Hà Nội", "HNX");
+  assert.deepEqual(filtered.map((item) => item.url), ["https://example.com/shb"]);
+});

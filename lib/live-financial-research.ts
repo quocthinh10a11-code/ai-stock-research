@@ -32,9 +32,11 @@ export function filterEntitySources(sources: WebResearchSource[], symbol: string
     const companyMatches = companyTokens.filter((token) => `${title} ${content}`.includes(token)).length >= Math.min(2, companyTokens.length);
     const symbolTitle = new RegExp(`(^|[^a-z0-9])${normalizedSymbol}([^a-z0-9]|$)`, "i").test(title);
     const exchangeSymbol = title.includes(`${exchange.toLowerCase()}:${normalizedSymbol}`);
+    const wrongExchangeSymbol = ["hose", "hnx", "upcom"].some((candidate) => candidate !== exchange.toLowerCase() && title.includes(`${candidate}:${normalizedSymbol}`));
     const officialExchange = /(^|\.)(hnx\.vn|hsx\.vn|hose\.vn)$/.test(hostname) && new RegExp(`(^|[^a-z0-9])${normalizedSymbol}([^a-z0-9]|$)`, "i").test(content);
     const companyDomain = hostname === `${normalizedSymbol}.com.vn` || hostname.endsWith(`.${normalizedSymbol}.com.vn`);
-    return companyMatches || officialExchange || (symbolTitle && (exchangeSymbol || companyDomain || title.startsWith(`${normalizedSymbol}:`) || title.includes(`(${normalizedSymbol}`)));
+    if (wrongExchangeSymbol) return false;
+    return companyMatches || officialExchange || (symbolTitle && (exchangeSymbol || companyDomain));
   });
 }
 
