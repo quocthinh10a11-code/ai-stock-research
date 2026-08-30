@@ -201,6 +201,7 @@ class CompanyListingTests(unittest.TestCase):
         self.assertIn("fetched_at", rows[0])
         self.assertIn("expires_at", rows[0])
         self.assertEqual(rows[0]["revenue"], 10_000_000.0)
+        self.assertIsNone(rows[0]["net_profit"])
         self.assertEqual(rows[0]["unit"], "VND")
         self.assertEqual(len(rows[0]["content_hash"]), 64)
 

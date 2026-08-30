@@ -142,8 +142,7 @@ def validate_financial_periods(rows: list[dict[str, Any]]) -> str:
         equity = row.get("equity")
         revenue = row.get("revenue")
         gross_profit = row.get("gross_profit")
-        net_profit = row.get("net_profit")
-        if revenue is not None and revenue <= 0 and gross_profit is not None and gross_profit > 0 and net_profit is not None and net_profit > 0:
+        if revenue is not None and revenue <= 0 and gross_profit is not None and gross_profit > 0:
             row["revenue"] = None
             had_warning = True
         if assets is not None and assets <= 0:
@@ -315,7 +314,10 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                 "expires_at": (fetched_at + timedelta(days=7)).isoformat(),
                 "source_name": f"vnstock-community/{source.lower()}",
                 "refresh_status": "ready",
-                **combined[period],
+                **{
+                    field: combined[period].get(field)
+                    for field in (*sorted(MONETARY_FIELDS), "eps")
+                },
             } for period in period_order[:20]]
             data_quality = validate_financial_periods(rows)
             for row in rows:
