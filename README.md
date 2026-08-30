@@ -52,4 +52,4 @@ Stock search, OHLCV, technical evidence and synchronized company fundamentals re
 
 Live research is cache-first for 60 minutes and deduplicated per symbol. “Nghiên cứu lại” bypasses the source cache, while the free-safe global cap of 10 new AI runs per UTC day and stale-report fallback keep the structured dashboard available if Tavily or Gemini is unavailable. The cap remains 10 even if a larger environment value is configured because a live stock run can consume two focused Search credits and one Extract credit. Only bounded extracted text and provenance are cached; the application does not store complete articles or PDFs.
 
-See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets.
+See [Realtime company research](docs/realtime-company-research.md) for data sync, free-tier limits and deployment secrets. AI 1M/3M/6M scenarios are persisted and evaluated against later EOD closes as described in [AI scenario evaluation](docs/prediction-evaluation.md); they remain explicitly uncalibrated until enough representative observations exist.
