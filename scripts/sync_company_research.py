@@ -170,7 +170,10 @@ def financial_content_hash(row: dict[str, Any]) -> str:
 
 def period_end_date(label: str) -> str | None:
     year_match = re.search(r"(20\d{2})", label)
-    quarter_match = re.search(r"(?:Q|QUARTER)[-_ /]?([1-4])|([1-4])[-_ /]?(?:Q|QUARTER)", label.upper())
+    quarter_match = re.search(
+        r"Q(?:UARTER)?[-_ /]?([1-4])|(?:^|[-_ /])([1-4])[-_ /]?Q(?:UARTER)?",
+        label.upper(),
+    )
     if not year_match:
         return None
     year = int(year_match.group(1))
@@ -270,6 +273,20 @@ def kbs_report_frame(finance: Finance, report_name: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def vci_report_frame(finance: Finance, report_name: str) -> pd.DataFrame:
+    """Use VCI's bounded historical endpoint instead of its four-period public default."""
+    provider = getattr(finance, "_provider", None)
+    if provider is None or not hasattr(provider, "_get_financial_report"):
+        return getattr(finance, report_name)(period="quarter")
+    return provider._get_financial_report(  # noqa: SLF001 - vnstock is pinned to 4.0.7.
+        report_name,
+        period="quarter",
+        get_all=True,
+        dropna=True,
+        limit=40,
+    )
+
+
 def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> tuple[int, str]:
     errors: list[str] = []
     request_delay = float(os.getenv("VNSTOCK_FINANCE_REQUEST_DELAY_SECONDS", "4"))
@@ -284,7 +301,12 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
             ):
                 if request_delay > 0:
                     time.sleep(request_delay)
-                frame = kbs_report_frame(finance, report_name) if source == "KBS" else fetch_report(period="quarter")
+                if source == "KBS":
+                    frame = kbs_report_frame(finance, report_name)
+                elif source == "VCI":
+                    frame = vci_report_frame(finance, report_name)
+                else:
+                    frame = fetch_report(period="quarter")
                 if not frame.empty:
                     frames_list.append(frame)
             frames = tuple(frames_list)
@@ -301,6 +323,11 @@ def sync_fundamentals(client: SupabaseRest, symbol: str, sources: list[str]) -> 
                     if period not in period_order:
                         period_order.append(period)
                     combined.setdefault(period, {}).update(values[period])
+            period_order = sorted(
+                combined,
+                key=lambda period: period_end_date(period) or "",
+                reverse=True,
+            )
             fetched_at = datetime.now(timezone.utc)
             rows = [{
                 "symbol": symbol,

@@ -20,9 +20,9 @@ class WorkflowScheduleTests(unittest.TestCase):
         self.assertIn('cron: "17 13 * * 1-5"', financials)
         self.assertIn('cron: "17 1 * * 6"', financials)
 
-    def test_every_fundamental_worker_prefers_consolidated_kbs_data(self):
+    def test_every_fundamental_worker_prefers_vci_history_with_kbs_fallback(self):
         for name in ("process-refresh-queue.yml", "sync-market-data.yml", "sync-company-financials.yml"):
-            self.assertIn("VNSTOCK_FINANCE_SOURCES: KBS,VCI", self.workflow(name), name)
+            self.assertIn("VNSTOCK_FINANCE_SOURCES: VCI,KBS", self.workflow(name), name)
 
 
 if __name__ == "__main__":

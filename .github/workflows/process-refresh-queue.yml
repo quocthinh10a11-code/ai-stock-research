@@ -45,5 +45,5 @@ jobs:
           REFRESH_BATCH_SIZE: ${{ github.event_name == 'workflow_dispatch' && inputs.batch_size || '4' }}
           REFRESH_PREPARE_ALL_SHARDS: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
           REFRESH_WORKER_ID: github-${{ github.run_id }}-${{ github.run_attempt }}
-          VNSTOCK_FINANCE_SOURCES: KBS,VCI
+          VNSTOCK_FINANCE_SOURCES: VCI,KBS
           VNSTOCK_REQUEST_DELAY_SECONDS: "5"

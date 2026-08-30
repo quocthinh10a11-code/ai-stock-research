@@ -4,10 +4,25 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from scripts.sync_company_research import all_exchange_listings, kbs_report_frame, listing_rows, main, normalize_monetary_values, report_values, sync_fundamentals, validate_financial_periods
+from scripts.sync_company_research import all_exchange_listings, kbs_report_frame, listing_rows, main, normalize_monetary_values, period_end_date, report_values, sync_fundamentals, validate_financial_periods, vci_report_frame
 
 
 class CompanyListingTests(unittest.TestCase):
+    def test_quarter_parser_does_not_treat_last_year_digit_as_quarter(self):
+        self.assertEqual(period_end_date("2024-Q1"), "2024-03-31")
+        self.assertEqual(period_end_date("2024-Q2"), "2024-06-30")
+        self.assertEqual(period_end_date("2024-Q3"), "2024-09-30")
+        self.assertEqual(period_end_date("2024-Q4"), "2024-12-31")
+    def test_vci_history_requests_bounded_full_periods(self):
+        finance = MagicMock()
+        finance._provider._get_financial_report.return_value = pd.DataFrame({"item_id": ["net_sales"]})
+
+        frame = vci_report_frame(finance, "income_statement")
+
+        self.assertFalse(frame.empty)
+        finance._provider._get_financial_report.assert_called_once_with(
+            "income_statement", period="quarter", get_all=True, dropna=True, limit=40
+        )
     def test_vnd_million_values_are_normalized_but_eps_is_not_scaled(self):
         values, unit = normalize_monetary_values({
             "2025-Q4": {"revenue": 3_830_762.0, "net_profit": 2_259_937.0, "eps": 1_234.0}
@@ -189,6 +204,7 @@ class CompanyListingTests(unittest.TestCase):
         empty_provider.balance_sheet.return_value = pd.DataFrame()
         empty_provider.cash_flow.return_value = pd.DataFrame()
         fallback_provider = MagicMock()
+        fallback_provider._provider = None
         fallback_provider.income_statement.return_value = pd.DataFrame({"item_id": ["revenue"]})
         fallback_provider.balance_sheet.return_value = pd.DataFrame({"item_id": ["total_assets"]})
         fallback_provider.cash_flow.return_value = pd.DataFrame({"item_id": ["net_cash_flow"]})

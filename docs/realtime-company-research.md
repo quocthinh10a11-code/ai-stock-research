@@ -51,7 +51,7 @@ python scripts/sync_company_research.py
 Remove-Item Env:MARKET_SYMBOLS, Env:FUNDAMENTAL_SYMBOLS
 ```
 
-The `Sync company financials` workflow automatically checks the default and recently researched universe at 20:17 ICT every weekday, with an additional 08:17 Saturday catch-up. It prefers consolidated KBS periods and falls back to VCI. Both this workflow and `Sync Vietnam market data` accept a comma-separated `symbols` input for an immediate manual refresh; normal quarterly operation does not require entering metrics by hand.
+The `Sync company financials` workflow automatically checks the default and recently researched universe at 20:17 ICT every weekday, with an additional 08:17 Saturday catch-up. It requests up to 40 VCI periods, persists the latest 20, and falls back to KBS when VCI is unavailable. The UI does not claim consolidated scope unless provider metadata proves it. Both this workflow and `Sync Vietnam market data` accept a comma-separated `symbols` input for an immediate manual refresh; normal quarterly operation does not require entering metrics by hand.
 
 ## Free-tier boundaries
 
