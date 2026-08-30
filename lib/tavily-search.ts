@@ -64,6 +64,7 @@ export async function searchFinancialWeb({
         include_usage: true,
         auto_parameters: false,
         safe_search: true,
+        exclude_domains: ["facebook.com", "reddit.com", "seekingalpha.com", "youtube.com", "tiktok.com", "x.com", "twitter.com"],
       }),
       signal: AbortSignal.timeout(15_000),
     });
@@ -168,7 +169,18 @@ export async function extractFinancialWeb({
     return [{ ...original, content: raw.slice(0, 16_000) || original.content, retrievedAt }];
   });
   const extractedByUrl = new Map(extracted.map((source) => [source.url, source]));
-  return { ok: true, results: candidates.map((source) => extractedByUrl.get(source.url) ?? source) };
+  const resolved = candidates.map((source) => extractedByUrl.get(source.url) ?? source);
+  const knownUrls = new Set(resolved.map((source) => source.url));
+  const pdfAttachments = resolved.flatMap((source) => {
+    const urls = source.content.match(/https?:\/\/[^\s)\]"']+\.pdf(?:\?[^\s)\]"']*)?/gi) ?? [];
+    return urls.flatMap((url) => {
+      const cleanUrl = url.replace(/[.,;]+$/, "");
+      if (knownUrls.has(cleanUrl) || !isPublicWebUrl(cleanUrl)) return [];
+      knownUrls.add(cleanUrl);
+      return [{ title: `${source.title} — PDF đính kèm`, url: cleanUrl, content: source.content, publishedAt: source.publishedAt, source: new URL(cleanUrl).hostname.replace(/^www\./, ""), documentType: "pdf" as const, retrievedAt }];
+    });
+  }).slice(0, 2);
+  return { ok: true, results: [...resolved, ...pdfAttachments].slice(0, 7) };
 }
 
 export async function searchSectorWeb({

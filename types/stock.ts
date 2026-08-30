@@ -7,7 +7,7 @@ export interface TrendForecast { horizon: "1M" | "3M" | "6M"; direction: MarketB
 export type InvestmentAction = "buy" | "accumulate" | "hold" | "reduce" | "sell" | "insufficient_data";
 export interface InvestmentMetric { name: string; value: string | null; trend: string | null; sourceIndices: number[]; }
 export interface InvestmentDecisionRow { group: "business_performance" | "valuation" | "financial_health" | "risk_momentum"; title: string; metrics: InvestmentMetric[]; analysis: string; action: InvestmentAction; confidence: "low" | "medium" | "high"; rationale: string; }
-export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; facts: FinancialResearchFact[]; warnings: string[]; asOf: string; expiresAt: string; cached: boolean; model: string; }
+export interface GroundedResearch { summary: string; outlook: string; catalysts: string[]; risks: string[]; forecasts: TrendForecast[]; decisionMatrix: InvestmentDecisionRow[]; citations: ResearchCitation[]; facts: FinancialResearchFact[]; warnings: string[]; asOf: string; expiresAt: string; cached: boolean; model: string; staleFallback?: boolean; fallbackReason?: string; }
 export type FreshnessKind = "market" | "technical" | "fundamentals" | "disclosures" | "sector" | "ai";
 export type FreshnessStatus = "Live" | "Delayed" | "EOD" | "Cached" | "Stale";
 export type MarketSession = "open" | "closed";

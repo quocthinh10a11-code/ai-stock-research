@@ -213,7 +213,7 @@ export async function requestFinancialFactsGemini({
         generationConfig: {
           temperature: 0,
           responseMimeType: "application/json",
-          maxOutputTokens: 4_096,
+          maxOutputTokens: 8_192,
           thinkingConfig: { thinkingLevel: "minimal" },
         },
       }),

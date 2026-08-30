@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeFinancialFacts } from "../lib/live-financial-research.ts";
+import { filterEntitySources, normalizeFinancialFacts } from "../lib/live-financial-research.ts";
 import { fetchPublicPdf, isPublicIp } from "../lib/safe-document-fetch.ts";
 
 test("rejects private, loopback and link-local document addresses", () => {
@@ -35,4 +35,15 @@ test("keeps only evidenced, source-bound financial facts", () => {
   assert.equal(facts.length, 1);
   assert.equal(facts[0].metric, "eps");
   assert.equal(facts[0].page, 12);
+});
+
+test("keeps MBS entity sources and rejects pages that only mention MBS as a research house", () => {
+  const source = (title: string, url: string, content: string) => ({ title, url, content, publishedAt: null, source: new URL(url).hostname, documentType: "html" as const });
+  const filtered = filterEntitySources([
+    source("Báo cáo tài chính quý 2/2026 - MBS", "https://www.mbs.com.vn/bao-cao-tai-chinh-quy-2-2026/", "Công ty Cổ phần Chứng khoán MB"),
+    source("Báo cáo tài chính quý 2/2026", "https://hnx.vn/report", "MBS_2026 BCTC"),
+    source("Lợi nhuận ngân hàng 2026", "https://vietstock.vn/news", "Khối nghiên cứu MBS dự báo tín dụng"),
+    source("TCB: Techcombank", "https://finance.vietstock.vn/TCB", "MBS cấp margin cho TCB"),
+  ], "MBS", "CTCP Chứng khoán MB", "HNX");
+  assert.deepEqual(filtered.map((item) => item.url), ["https://www.mbs.com.vn/bao-cao-tai-chinh-quy-2-2026/", "https://hnx.vn/report"]);
 });

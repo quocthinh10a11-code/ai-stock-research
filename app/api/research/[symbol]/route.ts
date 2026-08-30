@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAnalysis } from "@/lib/data/get-analysis";
-import { requestGroundedGemini, requestSynthesisGemini } from "@/lib/gemini-provider";
-import { runLiveFinancialResearch, type LiveFinancialFact } from "@/lib/live-financial-research";
+import { requestFinancialFactsGemini, requestGroundedGemini } from "@/lib/gemini-provider";
+import { normalizeFinancialFacts, runLiveFinancialResearch, type LiveFinancialFact } from "@/lib/live-financial-research";
 import { normalizeStockSymbol } from "@/lib/market-universe";
 import { hashResearchInput, hashWebSources, isFreshIso, parseWebSources } from "@/lib/research-cache";
 import { normalizeDecisionMatrix } from "@/lib/research-report";
+import { fetchPublicPdf } from "@/lib/safe-document-fetch";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { WebResearchSource } from "@/lib/tavily-search";
@@ -102,7 +103,7 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
   const telemetry = async (event: "cache_hit" | "collapsed" | "failed") => { await admin.rpc("record_ai_research_event", { p_event: event }); };
   const fallback = async (message: string, status: number) => {
     await telemetry("failed");
-    return latest ? NextResponse.json({ ...reportFromRow(latest, true), staleFallback: true }) : NextResponse.json({ error: message }, { status });
+    return latest ? NextResponse.json({ ...reportFromRow(latest, true), staleFallback: true, fallbackReason: message }) : NextResponse.json({ error: message }, { status });
   };
 
   const structured = structuredInput(analysis);
@@ -123,7 +124,7 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
     }
     inputHash = webSources.length
       ? hashResearchInput({ structuredHash, sourceHash: hashWebSources(webSources), retrieval: "live-financial-v2" })
-      : hashResearchInput({ structuredHash, sourceState: "stale", refreshBucket: forceRefresh ? Math.floor(Date.now() / 60_000) : null, retrieval: "live-financial-v2" });
+      : hashResearchInput({ structuredHash, sourceState: "stale", forced: forceRefresh, retrieval: "live-financial-v2" });
   } else {
     inputHash = hashResearchInput({ structuredHash, groundingBucket: Math.floor(Date.now() / (legacyCacheMinutes * 60_000)), retrieval: "gemini-grounding-v1" });
   }
@@ -154,7 +155,8 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
   const { data: reserved, error: quotaError } = await admin.rpc("reserve_ai_research_budget", { p_limit: dailyLimit, p_kind: "stock" });
   if (quotaError || !reserved) {
     await finish(false, quotaError?.message ?? "daily quota exhausted");
-    return latest ? NextResponse.json({ ...reportFromRow(latest, true), staleFallback: true }) : NextResponse.json({ error: quotaError ? "Không thể kiểm tra quota AI." : "Đã hết ngân sách AI miễn phí trong ngày." }, { status: quotaError ? 503 : 429 });
+    const quotaMessage = quotaError ? "Không thể kiểm tra quota AI." : "Đã hết ngân sách AI miễn phí trong ngày.";
+    return latest ? NextResponse.json({ ...reportFromRow(latest, true), staleFallback: true, fallbackReason: quotaMessage }) : NextResponse.json({ error: quotaMessage }, { status: quotaError ? 503 : 429 });
   }
 
   const asOf = new Date().toISOString();
@@ -164,10 +166,9 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
   try {
     if (tavilyKey) {
       if (!webSources.length) {
-        const live = await runLiveFinancialResearch({ apiKey, tavilyKey, symbol, company: analysis.company, exchange: analysis.exchange });
+        const live = await runLiveFinancialResearch({ tavilyKey, symbol, company: analysis.company, exchange: analysis.exchange });
         if (!live.ok) { await finish(false, live.detail); return fallback(live.message, live.status); }
         webSources = live.sources;
-        liveFacts = live.facts;
         researchWarnings = live.warnings;
         sourceExpiry = new Date(Date.now() + sourceCacheMinutes * 60_000).toISOString();
         refreshedSourceHash = hashWebSources(webSources);
@@ -181,9 +182,17 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
         }
       }
       const sourceContext = webSources.map((source, index) => ({ sourceIndex: index + 1, title: source.title, url: source.url, publishedAt: source.publishedAt, documentType: source.documentType, extractedContent: source.content.slice(0, 4_000) }));
-      const synthesis = await requestSynthesisGemini({ apiKey, prompt: `${basePrompt}\n\nDữ kiện được agent trích xuất và kiểm tra schema; chỉ dùng đúng sourceIndex đi kèm, không tự tạo metric thiếu: ${JSON.stringify(liveFacts)}\n\nNội dung nguồn agent đã đọc, tham chiếu bằng sourceIndex: ${JSON.stringify(sourceContext)}` });
-      if (!synthesis.ok) { await finish(false, synthesis.error.detail); return fallback(synthesis.error.message, synthesis.error.httpStatus); }
-      response = synthesis.response; model = `${synthesis.model}+tavily-extract${webSources.some((source) => source.documentType === "pdf") ? "+pdf" : ""}`;
+      const pdfSourceIndex = webSources.findIndex((source) => source.documentType === "pdf");
+      let pdfBytes: Uint8Array | undefined;
+      if (pdfSourceIndex >= 0) {
+        try { pdfBytes = (await fetchPublicPdf({ url: webSources[pdfSourceIndex].url })).bytes; }
+        catch { researchWarnings.push("PDF không thể tải an toàn hoặc vượt giới hạn 8 MB; agent đã dùng nội dung web trích xuất."); }
+      }
+      const pdfInstruction = pdfBytes ? `PDF đính kèm là sourceIndex ${pdfSourceIndex + 1}; fact từ PDF phải có số trang.` : "Không có PDF đính kèm; page phải là null.";
+      const combinedPrompt = `${basePrompt}\n\n${pdfInstruction} Đọc các nguồn đúng thực thể bên dưới. Đồng thời thêm trường facts vào JSON: [{"metric":"revenue|gross_profit|operating_profit|profit_before_tax|net_profit|eps|roe|pe|pb|peg|debt_to_equity|operating_cash_flow|capex|fcf|beta|dividend_yield|total_assets|total_liabilities|equity","label":"tên tiếng Việt","value":"giá trị nguyên văn","period":"kỳ hoặc null","unit":"đơn vị hoặc null","sourceIndex":1,"page":null,"evidence":"đoạn chứng cứ ngắn nguyên văn","confidence":"medium|high"}]. Chỉ tạo fact thuộc đúng ${symbol}, có evidence nguyên văn trong sourceIndex tương ứng; không suy diễn. Metric trong decisionMatrix chỉ được có value khi liên kết sourceIndices tới fact cùng metric hoặc có trong dữ liệu structured.\n\nNguồn agent đã đọc: ${JSON.stringify(sourceContext)}`;
+      const combined = await requestFinancialFactsGemini({ apiKey, prompt: combinedPrompt, pdfBytes });
+      if (!combined.ok) { await finish(false, combined.error.detail); return fallback(combined.error.message, combined.error.httpStatus); }
+      response = combined.response; model = `${combined.model}+tavily-extract${pdfBytes ? "+pdf" : ""}`;
     } else {
       const provider = await requestGroundedGemini({ apiKey, prompt: basePrompt });
       if (!provider.ok) { await finish(false, provider.error.detail); return fallback(provider.error.message, provider.error.httpStatus); }
@@ -193,6 +202,7 @@ export async function POST(request: Request, context: { params: Promise<{ symbol
     const candidate = body.candidates?.[0];
     const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
     const parsed = JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")) as Record<string, unknown>;
+    if (webSources.length) liveFacts = normalizeFinancialFacts(parsed.facts, webSources);
     const rawForecasts = Array.isArray(parsed.forecasts) ? parsed.forecasts : [];
     const forecasts = (["1M", "3M", "6M"] as const).map((horizon, index) => normalizeForecast(rawForecasts[index], horizon));
     const rawInsights = Array.isArray(parsed.newsInsights) ? parsed.newsInsights : [];

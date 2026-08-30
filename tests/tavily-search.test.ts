@@ -11,6 +11,7 @@ test("normalizes Vietnamese exchange-aware Tavily results", async () => {
     assert.equal(request.search_depth, "basic");
     assert.equal(request.max_results, 6);
     assert.equal(request.chunks_per_source, 1);
+    assert.ok(request.exclude_domains.includes("facebook.com"));
     return Response.json({ results: [{
       title: "FPT reports quarterly growth",
       url: "https://example.com/fpt-results",
@@ -33,7 +34,7 @@ test("extracts bounded full-page financial content from discovered URLs", async 
     assert.equal(request.extract_depth, "basic");
     assert.equal(request.chunks_per_source, 5);
     assert.deepEqual(request.urls, ["https://example.com/mbs.pdf"]);
-    return Response.json({ results: [{ url: "https://example.com/mbs.pdf", raw_content: "Doanh thu quý II và lợi nhuận sau thuế." }] });
+    return Response.json({ results: [{ url: "https://example.com/mbs.pdf", raw_content: "Doanh thu quý II và lợi nhuận sau thuế. File: https://files.example.com/mbs-q2.pdf" }] });
   }) as typeof fetch;
   const result = await extractFinancialWeb({ apiKey: "tvly-test", symbol: "MBS", sources: [{ title: "BCTC MBS", url: "https://example.com/mbs.pdf", content: "excerpt", publishedAt: null, source: "example.com", documentType: "pdf" }], fetchImpl });
   assert.equal(result.ok, true);
@@ -41,6 +42,7 @@ test("extracts bounded full-page financial content from discovered URLs", async 
     assert.match(result.results[0].content, /lợi nhuận sau thuế/);
     assert.equal(result.results[0].documentType, "pdf");
     assert.ok(result.results[0].retrievedAt);
+    assert.equal(result.results[1].url, "https://files.example.com/mbs-q2.pdf");
   }
 });
 
