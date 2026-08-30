@@ -1,6 +1,6 @@
 [
-  {"name":"Tài chính","codes":["8300","8500","8600","8700"],"industries":["Ngân hàng","Bảo hiểm","Bất động sản","Dịch vụ tài chính"]},
-  {"name":"Bất động sản & Xây dựng","codes":["2300"],"industries":["Xây dựng và Vật liệu"]},
+  {"name":"Tài chính","codes":["8300","8500","8700"],"industries":["Ngân hàng","Bảo hiểm","Dịch vụ tài chính"]},
+  {"name":"Bất động sản & Xây dựng","codes":["2300","8600"],"industries":["Xây dựng và Vật liệu","Bất động sản"]},
   {"name":"Dầu khí & Năng lượng","codes":["0500"],"industries":["Dầu khí"]},
   {"name":"Vật liệu cơ bản","codes":["1300","1700"],"industries":["Hóa chất","Tài nguyên Cơ bản"]},
   {"name":"Công nghiệp","codes":["2700","3300"],"industries":["Hàng & Dịch vụ Công nghiệp","Ô tô và phụ tùng"]},

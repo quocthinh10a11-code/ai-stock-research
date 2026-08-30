@@ -8,7 +8,32 @@ from urllib.error import HTTPError, URLError
 
 import pandas as pd
 
-from scripts.sync_market_data import SupabaseRest, sync_symbol
+from scripts.sync_market_data import SupabaseRest, preserve_stock_classification, sync_symbol
+
+
+class StockClassificationTests(unittest.TestCase):
+    def test_canonical_icb_classification_survives_catalog_refresh(self):
+        incoming = [{"symbol": "SHB", "sector": "Unclassified", "exchange": "HOSE"}]
+        existing = [{
+            "symbol": "SHB",
+            "sector": "Tài chính",
+            "sector_group": "Tài chính",
+            "icb_level2_code": "8300",
+            "icb_level2_name": "Ngân hàng",
+        }]
+
+        rows = preserve_stock_classification(incoming, existing)
+
+        self.assertEqual(rows[0]["sector"], "Tài chính")
+        self.assertEqual(rows[0]["sector_group"], "Tài chính")
+        self.assertEqual(rows[0]["icb_level2_code"], "8300")
+
+    def test_new_unclassified_symbol_remains_explicitly_unclassified(self):
+        rows = preserve_stock_classification(
+            [{"symbol": "NEW", "sector": "Unclassified"}], []
+        )
+
+        self.assertEqual(rows[0]["sector"], "Unclassified")
 
 
 class SuccessfulResponse:
@@ -101,6 +126,9 @@ class AggregateSnapshotTests(unittest.TestCase):
 
             def upsert(self, table, rows, conflict):
                 self.calls.append((table, rows, conflict))
+
+            def select(self, *_args, **_kwargs):
+                return []
 
         client = RecordingClient()
         sync_symbol(client, "FPT", ("FPT Corporation", "Technology", "HOSE"), "2026-06-01", "2026-08-29", 1000)

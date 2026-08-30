@@ -9,6 +9,8 @@ class SectorScreenerTests(unittest.TestCase):
     def test_taxonomy_has_ten_groups_and_nineteen_icb_level_two_codes(self):
         self.assertEqual(len(TAXONOMY), 10)
         self.assertEqual(len(GROUP_BY_CODE), 19)
+        self.assertEqual(GROUP_BY_CODE["8300"], "Tài chính")
+        self.assertEqual(GROUP_BY_CODE["8600"], "Bất động sản & Xây dựng")
 
     def test_strong_company_passes_common_screener(self):
         row = score_row({

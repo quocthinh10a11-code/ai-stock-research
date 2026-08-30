@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!/^[A-Z0-9]{2,10}$/.test(query)) return NextResponse.json({ found: false }, { status: 400 });
   const supabase = createPublicDataClient();
   if (!supabase) return NextResponse.json({ error: "Market search is not configured." }, { status: 503 });
-  const { data, error } = await supabase.from("stocks").select("symbol,company_name,sector,exchange").eq("symbol", query).maybeSingle();
+  const { data, error } = await supabase.from("stocks").select("symbol,company_name,sector,exchange,icb_level2_name,sector_group").eq("symbol", query).maybeSingle();
   if (error) return NextResponse.json({ error: "Market search is temporarily unavailable." }, { status: 503 });
   if (!data) return NextResponse.json({ found: false });
 
@@ -43,5 +43,11 @@ export async function GET(request: Request) {
     if (refreshError) console.error("Search refresh enqueue failed", { symbol: query, code: refreshError.code, message: refreshError.message });
     else refresh = { requested: true, dataTypes };
   }
-  return NextResponse.json({ found: true, stock: data, refresh });
+  const stock = {
+    ...data,
+    sector: data.sector_group
+      ?? (data.sector && data.sector !== "Unclassified" ? data.sector : data.icb_level2_name)
+      ?? "Chưa phân loại",
+  };
+  return NextResponse.json({ found: true, stock, refresh });
 }

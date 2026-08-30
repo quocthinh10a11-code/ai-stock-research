@@ -27,8 +27,11 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
   const supabase = createPublicDataClient();
   if (!supabase) return null;
 
-  const { data: stock } = await supabase.from("stocks").select("symbol,company_name,sector,exchange,updated_at").eq("symbol", normalized).maybeSingle();
+  const { data: stock } = await supabase.from("stocks").select("symbol,company_name,sector,exchange,updated_at,icb_level2_code,icb_level2_name,sector_group").eq("symbol", normalized).maybeSingle();
   if (!stock) return null;
+  const canonicalSector = stock.sector_group
+    ?? (stock.sector && stock.sector !== "Unclassified" ? stock.sector : stock.icb_level2_name)
+    ?? "Chưa phân loại";
 
   const { data: snapshot } = await supabase.from("current_market_snapshots").select("symbol,close,previous_close,bias,price_date,price_provider_timestamp,price_fetched_at,price_expires_at,price_source_name,price_source_url,price_data_quality,price_last_error,price_refresh_status,technical_provider_timestamp,technical_fetched_at,technical_expires_at,technical_source_name,technical_source_url,technical_data_quality,technical_last_error,technical_refresh_status").eq("symbol", normalized).maybeSingle();
 
@@ -37,7 +40,12 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
   const { data: financialRows } = await supabase.from("financial_periods").select("period_label,period_end,revenue,gross_profit,operating_profit,profit_before_tax,net_profit,eps,total_assets,total_liabilities,equity,operating_cash_flow,unit,provider_timestamp,fetched_at,expires_at,source_name,source_url,data_quality,last_error,refresh_status").eq("symbol", normalized).eq("period_type", "quarter").not("period_end", "is", null).order("period_end", { ascending: false }).limit(20);
   const { data: disclosureRows } = await supabase.from("official_disclosures").select("title,excerpt,published_at,source_name,source_url").eq("symbol", normalized).order("published_at", { ascending: false }).limit(5);
   const { data: disclosureStatus } = await supabase.from("disclosure_sync_status").select("source_name,provider_timestamp,fetched_at,expires_at,data_quality,last_error,refresh_status").eq("symbol", normalized).maybeSingle();
-  const { data: relatedRows } = await supabase.from("stocks").select("symbol,company_name,exchange").eq("sector", stock.sector).neq("symbol", normalized).limit(5);
+  let relatedQuery = supabase.from("stocks").select("symbol,company_name,exchange").neq("symbol", normalized);
+  if (stock.icb_level2_code) relatedQuery = relatedQuery.eq("icb_level2_code", stock.icb_level2_code);
+  else if (stock.sector_group) relatedQuery = relatedQuery.eq("sector_group", stock.sector_group);
+  else if (stock.sector && stock.sector !== "Unclassified") relatedQuery = relatedQuery.eq("sector", stock.sector);
+  else relatedQuery = relatedQuery.eq("symbol", "__NO_UNCLASSIFIED_RELATED_STOCKS__");
+  const { data: relatedRows } = await relatedQuery.limit(5);
   const relatedSymbols = (relatedRows ?? []).map((row) => row.symbol);
   const { data: relatedSnapshots } = relatedSymbols.length ? await supabase.from("latest_market_snapshots").select("symbol,close,previous_close").in("symbol", relatedSymbols) : { data: [] };
   const relatedPrice = new Map((relatedSnapshots ?? []).map((row) => [row.symbol, row]));
@@ -57,7 +65,7 @@ export async function getAnalysis(symbol = "FPT"): Promise<StockAnalysis | null>
   return {
     symbol: stock.symbol,
     company: stock.company_name,
-    sector: stock.sector,
+    sector: canonicalSector,
     exchange: stock.exchange,
     price,
     change,

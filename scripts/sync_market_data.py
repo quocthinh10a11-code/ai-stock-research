@@ -160,6 +160,30 @@ class SupabaseRest:
         return unique
 
 
+def preserve_stock_classification(
+    rows: list[dict[str, Any]], existing_rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Keep the screener's canonical ICB classification during catalog/price refreshes."""
+    existing_by_symbol = {
+        str(row.get("symbol") or "").strip().upper(): row for row in existing_rows
+    }
+    result: list[dict[str, Any]] = []
+    for incoming in rows:
+        row = dict(incoming)
+        existing = existing_by_symbol.get(str(row.get("symbol") or "").strip().upper(), {})
+        for field in ("icb_level2_code", "icb_level2_name", "sector_group"):
+            if existing.get(field) not in (None, ""):
+                row[field] = existing[field]
+        canonical_sector = existing.get("sector_group")
+        existing_sector = str(existing.get("sector") or "").strip()
+        if canonical_sector:
+            row["sector"] = canonical_sector
+        elif existing_sector and existing_sector.lower() != "unclassified":
+            row["sector"] = existing_sector
+        result.append(row)
+    return result
+
+
 def calculate_indicators(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.sort_values("date").copy()
     result["sma20"] = result["close"].rolling(20).mean()
@@ -253,7 +277,14 @@ def sync_symbol(client: SupabaseRest, symbol: str, metadata: tuple[str, str, str
     fetched_at = datetime.now(timezone.utc)
     fetched_iso = fetched_at.isoformat()
     expires_iso = (fetched_at + timedelta(hours=36)).isoformat()
-    client.upsert("stocks", [{"symbol": symbol, "company_name": company, "sector": sector, "exchange": exchange, "updated_at": fetched_iso}], "symbol")
+    stock_rows = [{"symbol": symbol, "company_name": company, "sector": sector, "exchange": exchange, "updated_at": fetched_iso}]
+    existing_stocks = client.select(
+        "stocks",
+        "symbol,sector,icb_level2_code,icb_level2_name,sector_group",
+        symbol=f"eq.{symbol}",
+        limit="1",
+    )
+    client.upsert("stocks", preserve_stock_classification(stock_rows, existing_stocks), "symbol")
     frame = fetch_ohlcv(symbol, start, end, multiplier)
     price_rows = [{
         "symbol": symbol,

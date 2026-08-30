@@ -12,9 +12,9 @@ import pandas as pd
 from vnstock import Finance, Listing
 
 try:
-    from .sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api
+    from .sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api, preserve_stock_classification
 except ImportError:  # Support `python scripts/sync_company_research.py`.
-    from sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api
+    from sync_market_data import SupabaseRest, STOCKS, configure_vnstock_api, preserve_stock_classification
 
 
 EXCHANGES = {"HOSE", "HNX", "UPCOM"}
@@ -249,7 +249,15 @@ def main() -> int:
     listing = all_exchange_listings(Listing(source=listing_source))
     stocks = listing_rows(listing)
     for index in range(0, len(stocks), 250):
-        client.upsert("stocks", stocks[index:index + 250], "symbol")
+        batch = stocks[index:index + 250]
+        symbols = ",".join(row["symbol"] for row in batch)
+        existing_stocks = client.select(
+            "stocks",
+            "symbol,sector,icb_level2_code,icb_level2_name,sector_group",
+            symbol=f"in.({symbols})",
+            limit=str(len(batch)),
+        )
+        client.upsert("stocks", preserve_stock_classification(batch, existing_stocks), "symbol")
     print(f"Synced catalog: {len(stocks)} symbols across HOSE, HNX and UPCOM", flush=True)
     configured = os.getenv("FUNDAMENTAL_SYMBOLS", "").strip()
     requested_value = configured or ",".join(dict.fromkeys([*STOCKS, *client.recent_research_symbols()]))
