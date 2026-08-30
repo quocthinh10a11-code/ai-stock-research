@@ -7,7 +7,7 @@ The scheduled job fetches daily OHLCV data from the Vnstock Community v4.0.7 Uni
 - `SUPABASE_URL`: project URL.
 - `SUPABASE_SECRET_KEY`: backend-only Supabase secret key. A legacy `SUPABASE_SERVICE_ROLE_KEY` also works for local execution.
 
-Never expose either backend key through a `NEXT_PUBLIC_` variable. In GitHub, add the two values under repository Actions secrets. The workflow runs at 17:30 ICT on weekdays and can also be started manually.
+Never expose either backend key through a `NEXT_PUBLIC_` variable. In GitHub, add the two values under repository Actions secrets. The EOD workflow runs at 17:47 ICT on weekdays, after the closing data has had time to settle, and can also be started manually. Scheduled EOD runs update market data only; a manual dispatch continues to update both market data and selected company fundamentals.
 
 ## Local run
 

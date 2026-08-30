@@ -1,4 +1,4 @@
-name: Sync Vietnam market data
+name: Sync company financials
 
 on:
   workflow_dispatch:
@@ -8,20 +8,22 @@ on:
         required: false
         default: ""
   schedule:
-    # 17:47 Asia/Ho_Chi_Minh: allow EOD data to settle after the closing session.
-    - cron: "47 10 * * 1-5"
+    # 20:17 Asia/Ho_Chi_Minh on weekdays, after exchange disclosure windows.
+    - cron: "17 13 * * 1-5"
+    # 08:17 Saturday catch-up for reports published late on Friday.
+    - cron: "17 1 * * 6"
 
 permissions:
   contents: read
 
 concurrency:
-  group: sync-market-data
+  group: sync-company-financials
   cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -30,15 +32,8 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-market-data.txt
       - run: pip install -r requirements-market-data.txt
-      - run: python scripts/sync_market_data.py
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-          MARKET_SYMBOLS: ${{ inputs.symbols }}
-          VNSTOCK_REQUEST_DELAY_SECONDS: "5"
-      - run: python scripts/sync_company_research.py
-        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' }}
+      - name: Sync latest consolidated financial periods
+        run: python scripts/sync_company_research.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -46,4 +41,4 @@ jobs:
           FUNDAMENTAL_SYMBOLS: ${{ inputs.symbols }}
           VNSTOCK_FINANCE_SOURCES: KBS,VCI
           VNSTOCK_FINANCE_REQUEST_DELAY_SECONDS: "4"
-          VNSTOCK_INITIAL_DELAY_SECONDS: "30"
+          VNSTOCK_INITIAL_DELAY_SECONDS: "0"

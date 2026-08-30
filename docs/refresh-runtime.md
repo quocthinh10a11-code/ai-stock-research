@@ -16,9 +16,11 @@ GitHub documents a five-minute minimum schedule interval and warns that schedule
 
 ## Scheduling contract
 
-- The worker runs at minutes 07, 22, 37, and 52 from 02:00 through 08:59 UTC on weekdays.
+- The worker runs at minutes 07, 22, 37, and 52 during 02:00-04:59 and 06:00-08:59 UTC on weekdays (09:00-11:59 and 13:00-15:59 ICT). It deliberately skips the exchange lunch break.
 - Each run prepares all four deterministic symbol shards, but claims at most four jobs total.
 - Hot symbols are eligible every 15 minutes. Warm symbols are eligible every 60 minutes. Cold symbols are refreshed only after user activity queues them.
 - Hot inputs are current views, searches, watchlists, and the quantitative Top 5 in each sector.
 - The partial unique index on active jobs remains the deduplication lock.
 - A provider failure is completed through the Phase B retry function, which keeps cached data visible and applies exponential backoff.
+
+The broader daily pipeline is staggered to reduce provider contention: EOD OHLCV at 17:47 ICT, full sector ranking at 18:37 ICT, and consolidated company financials at 20:17 ICT. A Saturday 08:17 ICT financial catch-up collects reports published late on Friday.
